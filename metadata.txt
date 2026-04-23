@@ -1,15 +1,15 @@
 [general]
-name=Infra3D plugin
-qgisMinimumVersion=3.0
-description=This plugin is an integration of the Infra3D application with QGIS
+name=infra3D plugin
+qgisMinimumVersion=3.42
+description=This plugin is an integration of the infra3D application with QGIS
 version=0.3.0
-author=Sourcepole AG
-email=hka@sourcepole.ch
+author=iNovitas, FHNW IGEO
+email=info@inovitas.ch
+about=This plugin is an integration of the infra3D application with QGIS
+supportsQt6=True
 
-about=This plugin is an integration of the Infra3D application with QGIS
-
-tracker=https://github.com/sourcepole/qgis-infra3d-plugin/issues
-repository=https://github.com/sourcepole/qgis-infra3d-plugin
+tracker=https://github.com/FHNW-IGEO/Infra3DPlugin/issues
+repository=https://github.com/FHNW-IGEO/Infra3DPlugin
 # End of mandatory metadata
 
 # Recommended items:
@@ -19,9 +19,9 @@ hasProcessingProvider=no
 # changelog=
 
 # Tags are comma separated with spaces allowed
-tags=python
+tags=python, infra3D, StreetView Service
 
-homepage=https://github.com/sourcepole/qgis-infra3d-plugin/blob/main/README.md
+homepage=https://www.inovitas.ch/
 category=Web
 icon=infra3d.png
 # experimental flag
@@ -40,4 +40,3 @@ Category of the plugin: Raster, Vector, Database or Web
 
 # If the plugin can run on QGIS Server.
 server=False
-

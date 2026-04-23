@@ -66,7 +66,6 @@ class Infra3dMapTool(QgsMapToolEmitPoint):
         in the Infra3D application to the selected point in QGIS.
 
         """
-
         self.callback_start_infra3d()
 
         if self.infra3d_marker.isVisible() is False:

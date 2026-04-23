@@ -1,3 +1,5 @@
+# TODO: remove settings or make layers selectable
+
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
@@ -35,6 +37,19 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 DEFAULT_SERVER_PORT = 5000
 DEFAULT_PG_SERVER_PORT = 5432
 
+def str2bool(s: str) -> bool:
+    """Convert a string to a boolean value.
+
+    The string is considered True if it is equal to 'true' (case insensitive).
+    All other strings are considered False.
+
+    Args:
+        s (str): The string to convert.
+
+    Returns:
+        bool: The boolean value of the string.
+    """
+    return s.lower() == 'true'
 
 class Infra3DSettings(QDialog, FORM_CLASS):
 
@@ -42,8 +57,8 @@ class Infra3DSettings(QDialog, FORM_CLASS):
         super(Infra3DSettings, self).__init__(parent)
         self.setupUi(self)
         self.settings = QSettings()
-        self.buttonBox.button(QDialogButtonBox.Save).clicked.connect(self.save_settings)
-        self.buttonBox.button(QDialogButtonBox.Cancel).clicked.connect(self.prefill_from_settings)
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Save).clicked.connect(self.save_settings)
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Cancel).clicked.connect(self.prefill_from_settings)
 
         # Get values from settings and prefill dialog
         self.prefill_from_settings()
@@ -58,7 +73,9 @@ class Infra3DSettings(QDialog, FORM_CLASS):
         # SocketIO server
         self.server_port_spinBox.setValue(int(self.settings.value("/infra3d_viewer/server_port", DEFAULT_SERVER_PORT)))
         # Postgres server
-        self.infra3d_groupBox.setChecked(bool(self.settings.value('/infra3d_viewer/load_pg_layer', False)))
+        # NOTE: bool('false') --> True --- boolean operator on a string only returns false if string is empty
+        # NOTE: Therefore, we must compare the content with 'true'
+        self.infra3d_groupBox.setChecked(str2bool(self.settings.value('/infra3d_viewer/load_pg_layer', 'false')))
         self.pg_host_lineEdit.setText(self.settings.value('/infra3d_viewer/database/host'))
         self.pg_port_spinBox.setValue(int(self.settings.value('/infra3d_viewer/database/port', DEFAULT_PG_SERVER_PORT)))
         self.pg_username_lineEdit.setText(self.settings.value('/infra3d_viewer/database/username'))
@@ -82,6 +99,7 @@ class Infra3DSettings(QDialog, FORM_CLASS):
         # SocketIO server
         self.settings.setValue("/infra3d_viewer/server_port", self.server_port_spinBox.value())
         # Postgres server
+        print("Load PG layer is set to:", self.infra3d_groupBox.isChecked())
         self.settings.setValue('/infra3d_viewer/load_pg_layer', self.infra3d_groupBox.isChecked())
         self.settings.setValue('/infra3d_viewer/database/host', self.pg_host_lineEdit.text())
         self.settings.setValue('/infra3d_viewer/database/port', self.pg_port_spinBox.value())

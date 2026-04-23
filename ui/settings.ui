@@ -17,10 +17,10 @@
    <item row="1" column="0">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+      <enum>Qt::Orientation::Horizontal</enum>
      </property>
      <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Save</set>
+      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Save</set>
      </property>
     </widget>
    </item>
@@ -45,10 +45,10 @@
      <item row="6" column="1">
       <widget class="QLineEdit" name="infra3d_password_lineEdit">
        <property name="inputMethodHints">
-        <set>Qt::ImhNoAutoUppercase|Qt::ImhNoPredictiveText|Qt::ImhSensitiveData</set>
+        <set>Qt::InputMethodHint::ImhNoAutoUppercase|Qt::InputMethodHint::ImhNoPredictiveText|Qt::InputMethodHint::ImhSensitiveData</set>
        </property>
        <property name="echoMode">
-        <enum>QLineEdit::PasswordEchoOnEdit</enum>
+        <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
        </property>
       </widget>
      </item>
@@ -116,7 +116,7 @@
           <item row="3" column="1">
            <widget class="QLineEdit" name="pg_password_lineEdit">
             <property name="echoMode">
-             <enum>QLineEdit::PasswordEchoOnEdit</enum>
+             <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
             </property>
            </widget>
           </item>

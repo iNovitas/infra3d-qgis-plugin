@@ -1,12 +1,72 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-    <head>
-        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
-        <script type="text/javascript" charset="utf-8" src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
-        <script type="text/javascript" charset="utf-8" src="{{ url_for('static', filename='js/infra3dapi.js') }}" id="infra3dapi"></script>
-        <script type="text/javascript" src="{{ url_for('static', filename='js/application.js') }}"></script>
-    </head>
-    <body>
-        <div id="infra3d"></div>
-    </body>
+  <head>
+    <title>infra3D QGIS Plugin</title>
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='favicon.svg') }}"
+      type="image/svg+xml"
+    />
+    <!-- Styling of UI elements -->
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+
+    <!-- Server communication -->
+    <script
+      type="text/javascript"
+      charset="utf-8"
+      src="{{ url_for('static', filename='js/socket.io.min.js') }}"
+    ></script>
+
+    <!-- Get latest infra3d API from server -->
+    <script
+      type="text/javascript"
+      src="https://cdn.jsdelivr.net/npm/@inovitas/infra3dapi@latest/infra3dapi.js"
+      id="infra3dapi"
+    ></script>
+
+    <!-- Main JS interaction with plugin -->
+    <script
+      type="text/javascript"
+      src="{{ url_for('static', filename='js/application.js') }}"
+    ></script>
+  </head>
+  <body>
+    <!-- NOTE you cannot give the id "infra3d" anymore, else the overlay won`t be displayed! Therefore, the infra3d component is placed in the id="viewer"-->
+    <div id="viewer"></div>
+
+    <!-- Sidebar navigation to quickly change projects -->
+    <div id="sidebar">
+      <h2 id="sidebarHeader">Projekte:</h2>
+
+      <!-- Project cards are placed in a container -->
+      <div id="projectContainer"></div>
+
+      <!-- Toggle project selection (show/hide) -- SVG (folder-symbol) as symbol for toggling-->
+      <div id="projectToggle">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="white"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="folder-icon"
+        >
+          <path
+            d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+          />
+        </svg>
+      </div>
+      <div id="logout">
+        <button id="logout-button">Ausloggen</button>
+      </div>
+    </div>
+  </body>
 </html>

@@ -33,8 +33,12 @@ class SocketIOServer:
     def __init__(self):
         self.app = Flask(__name__)
         self.app.config["SECRET_KEY"] = "secret!"
-        self.app.logger.setLevel(logging.INFO)
-        self.socketio = SocketIO(self.app, async_mode="threading")
+        
+        # disable "werkzeug" logger
+        log = logging.getLogger('werkzeug')
+        log.setLevel(logging.ERROR)
+        self.app.logger.setLevel(logging.ERROR)
+        self.socketio = SocketIO(self.app, async_mode="threading", logger=False, engineio_logger=False, max_http_buffer_size= 50 * 1024**2)
         self.running = False
 
         # Register socketio events

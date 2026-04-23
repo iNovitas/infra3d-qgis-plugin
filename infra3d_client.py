@@ -46,6 +46,10 @@ class Infra3dClient(QObject):
     # the position in the Infra3D web app changed
     position_changed = pyqtSignal(dict)
     connection_failed = pyqtSignal(dict)
+    
+    # signal for when new network is received
+    network_changed = pyqtSignal(dict)
+    network_received = pyqtSignal(dict)
 
     def __init__(self, socketio_server_url):
         super(Infra3dClient, self).__init__()
@@ -81,18 +85,11 @@ class Infra3dClient(QObject):
         """
         self.__call_remote_method(
             "initInfra3d",
-            {
-                "url": "https://www.infra3d.ch/latest",
-                "lang": "de",
-                "map": False,
-                "layer": "true",
-                "navigation": True,
-                "buttons": True,
-                "username": username,
-                "password": password
-            }
+            {}
         )
         self.__listen_on_remote_event("initialized", self.webapp_initialized.emit)
+        # The listener for changing campaigns can be added here as it is first fired when the viewer is initialized
+        self.__listen_on_remote_event("networkChanged", self.network_changed.emit) 
 
     def setOnPositionChanged(self):
         """Listen on the remote event `positionChanged` that is emitted
@@ -107,6 +104,30 @@ class Infra3dClient(QObject):
         """Stop listening on remote event `positionChanged`
         """
         self.__call_remote_method("unsetOnPositionChanged", {})
+        
+    def getNetwork(self, scale: float, eMin: float, eMax: float, nMin: float, nMax: float) -> None:
+        """
+        Call frontend method to retreive the road-network and listen to its response.
+
+        Parameters
+        ----------
+        eMin : float
+            Bounding Box coordinate of the left edge
+        eMax : float
+            Bounding Box coordinate of the right edge
+        nMin : float
+            Bounding Box coordinate of the lower edge
+        nMax : float
+            Bounding Box coordinate of the upper edge
+        """
+        self.__call_remote_method("getNetwork", {
+            "scale": scale,
+            "eMin": eMin,
+            "eMax": eMax,
+            "nMin": nMin,
+            "nMax": nMax
+        })
+        self.__listen_on_remote_event("newNetwork", self.network_received.emit)
 
     def lookAt2DPosition(self, easting: float, northing: float):
         """Set the current position in the Infra3d application in the browser.
@@ -116,6 +137,12 @@ class Infra3dClient(QObject):
             northing (float): Coordinate N
         """
         self.__call_remote_method("lookAt2DPosition", {"easting": easting, "northing": northing})
+        
+    # def networkReceived(self) -> None:
+    #     """
+    #     Receive the network from infra3d to show in QGIS.
+    #     """
+    #     self.__listen_on_remote_event("networkChanged", self.network_changed.emit)
 
     def __call_remote_method(self, method_name: str, args: dict):
         """Helper method to call a remote method.

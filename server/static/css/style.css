@@ -11,13 +11,106 @@ body {
    overflow:hidden;
 }
 
-#infra3d {
-   position: absolute;
-   background-color: #ffffff;
-   overflow: hidden;
+#projectContainer {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.projectCard, #logout, #error {
+    /* main styling for project cards */
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+.projectCard button, #logout-button {
+    /* make button "invisible" */
    border: none;
-   left: 0px;
-   right: 0px;
-   top: 0px;
-   bottom: 0px;
+   background-color: transparent;
+}
+
+#logout-button {
+    color: white;
+}
+
+#logout-button {
+    cursor: pointer;
+}
+
+.projectCard:hover {
+    /* indicate interactivity */
+    background-color: #e0e0e0;
+    cursor: pointer;
+}
+
+#logout, #error {
+    color: white;
+    background-color: #0b5f86;
+    cursor: pointer;
+}
+
+#error {
+    background-color: #ff6700;
+}
+
+
+.projectCard button:hover {
+    /* indicate interactivity */
+    background-color: #e0e0e0;
+    cursor: pointer;
+}
+
+#logout:hover {
+    background-color: #053952;
+    cursor: pointer;
+}
+
+#sidebar {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 250px; 
+    background: white;
+    z-index: 10;
+    padding: 10px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+    overflow-y: visible;
+}
+
+#projectToggle {
+    position: absolute;
+    background-color: #053952; /*standard main color of infra3d UI elements*/
+    cursor: pointer; /*indicate interaction*/
+    left: 100%;
+    width: 64px; /*standard width for tools in infra3d viewer*/
+    height: 60px; /*standard height for tools in infra3d viewer*/
+    bottom: 32px; /*bottom spacing aligned with cockpit*/
+    z-index: 9999; /*ensure visibility infront of viewer*/
+    border-radius: 0px 10px 10px 0px;
+    display: flex; /*flex parameters for svg placement*/ 
+    justify-content: center; /*flex parameters for svg placement*/ 
+    align-items: center; /*flex parameters for svg placement*/ 
+}
+.folder-icon {
+    width: 24px; /*standard values for tool-symbols of infra3d UI elements*/
+    height: 24px; /*standard values for tool-symbols of infra3d UI elements*/
+    color: white;
+}
+
+#projectToggle:hover {
+    background-color: #0b5f86;
+}
+
+
+#viewer {
+    position: absolute;
+    left: 250px; /*NOTE: Depends on the placement of the sidebar, is overwritten in application.js*/
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: #ffffff; /* standard complementary color in infra3d viewer is pure white*/
 }

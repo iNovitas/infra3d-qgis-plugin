@@ -25,17 +25,19 @@ from threading import Thread
 from typing import Callable
 import os.path
 import sys
+from pyproj import Transformer
+import json
 
 # Add prepackaged dependencies to PYTHONPATH so the plugin can use them
 sys.path.append(os.path.join(os.path.dirname(__file__), "dependencies/site-packages"))
 
-from qgis.gui import QgisInterface
-from qgis.core import Qgis, QgsPointXY, QgsRectangle, QgsDataSourceUri, QgsProject, QgsVectorLayer
+from qgis.gui import QgisInterface, QgsMapToolPan
+from qgis.core import Qgis, QgsPointXY, QgsRectangle, QgsDataSourceUri, QgsProject, QgsVectorLayer, QgsCoordinateReferenceSystem, QgsJsonUtils
 from qgis.PyQt.QtCore import QEventLoop, QSettings, QTranslator, QCoreApplication, QUrl, Qt
 from qgis.PyQt.QtGui import QIcon, QDesktopServices, QGuiApplication
 from qgis.PyQt.QtWidgets import QAction
 
-from .infra3d_settings import Infra3DSettings, DEFAULT_SERVER_PORT, DEFAULT_PG_SERVER_PORT
+from .infra3d_settings import Infra3DSettings, DEFAULT_SERVER_PORT, DEFAULT_PG_SERVER_PORT, str2bool
 from .infra3d_client import Infra3dClient
 from .infra3d_map_tool import Infra3dMapTool
 from .server.socketio_server import SocketIOServer
@@ -75,8 +77,8 @@ class Infra3d:
 
         # Declare instance attributes
         self.actions = []
-        self.toolbar = self.iface.addToolBar("Infra3d")
-        self.toolbar.setObjectName("Infra3d")
+        self.toolbar = self.iface.addToolBar("infra3D")
+        self.toolbar.setObjectName("infra3D")
         self.settings = QSettings()
         self.settings_dialog = Infra3DSettings(self.iface.mainWindow())
 
@@ -98,6 +100,12 @@ class Infra3d:
             self.infra3d_marker,
             self.start_infra3d_blocking
         )
+        
+        self.panTool = QgsMapToolPan(self.iface.mapCanvas())
+        self.point_transformer = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
+        
+        # network
+        self.network_layer = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message: str) -> str:
@@ -112,15 +120,20 @@ class Infra3d:
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate("Infra3d", message)
+        return QCoreApplication.translate("infra3D", message)
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
         # Ownership of a QAction is not transfered to QMenu, so we need to keep
         # the references of the actions alive. The easiest way is with an actions list.
-        set_infra3d_position_action = QAction( QIcon(":/plugins/infra3d_viewer/infra3d_marker.png"), self.tr("Set infra3DRoad position"), self.iface.mainWindow())
-
+        
+        self.start_infra3d_action = QAction(QIcon(":/plugins/infra3d_viewer/infra3d.png"), self.tr("Enable infra3D"))
+        self.start_infra3d_action.toggled.connect(self.start_infra3d)
+        self.start_infra3d_action.setCheckable(True)
+        self.actions.append(self.start_infra3d_action)
+        
+        set_infra3d_position_action = QAction( QIcon(":/plugins/infra3d_viewer/infra3d_marker.png"), self.tr("Set infra3D position"), self.iface.mainWindow())
         set_infra3d_position_action.triggered.connect(self.set_infra3d_position)
         set_infra3d_position_action.setCheckable(True)
         self.infra3d_map_tool.setAction(set_infra3d_position_action)
@@ -130,32 +143,63 @@ class Infra3d:
         zoom_to_marker.triggered.connect(self.zoom_to_marker)
         self.actions.append(zoom_to_marker)
 
-        self.start_infra3d_action = QAction(QIcon(":/plugins/infra3d_viewer/infra3d.png"), self.tr("Enable infra3DRoad"))
-        self.start_infra3d_action.toggled.connect(self.start_infra3d)
-        self.start_infra3d_action.setCheckable(True)
-        self.actions.append(self.start_infra3d_action)
-
-        self.infra3d_settings = Infra3DSettings(self.iface.mainWindow())
-        self.show_settings_action = QAction(QIcon(":/images/themes/default/mActionOptions.svg"), self.tr("Settings"))
-        self.show_settings_action.triggered.connect(self.infra3d_settings.show)
-        self.show_settings_action.setCheckable(False)
-        self.actions.append(self.show_settings_action)
+        # TODO: remove settings or make layers selectable
+        # self.infra3d_settings = Infra3DSettings(self.iface.mainWindow())
+        # self.show_settings_action = QAction(QIcon(":/images/themes/default/mActionOptions.svg"), self.tr("Settings"))
+        # self.show_settings_action.triggered.connect(self.infra3d_settings.show)
+        # self.show_settings_action.setCheckable(False)
+        # self.actions.append(self.show_settings_action)
+        
+        # synchronizing network
+        self.iface.mapCanvas().extentsChanged.connect(self.onExtentsChanged)
 
         for action in self.actions:
             self.toolbar.addAction(action)
 
+    def set_projection(self) -> None:
+        """
+        Set the projection to EPSG:3857
+        """
+        target_crs = QgsCoordinateReferenceSystem("EPSG:3857") # LV95
+        project = QgsProject.instance() # get current project
+        project.setCrs(target_crs) # update projection
+        self.iface.mapCanvas().refresh()
+    
+    def onExtentsChanged(self) -> None:
+        """
+        Fired whenever the extent of the QGIS mapCanvas changes.
+        """
+        try:
+            extent = self.iface.mapCanvas().extent().toString()
+            scale = self.iface.mapCanvas().scale()
+            ll, ur = extent.split(" : ")
+            eMin, nMin = [float(i) for i in ll.split(",")]
+            eMax, nMax = [float(i) for i in ur.split(",")]
+            self.infra3d_client.getNetwork(scale, eMin, eMax, nMin, nMax)
+        except Exception as e:
+            print(e)    
+            
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
 
         for action in self.actions:
             self.iface.removePluginWebMenu(
-                self.tr("infra3DRoad"),
+                self.tr("infra3D"),
                 action)
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
         del self.toolbar
 
     def start_infra3d(self, checked: bool):
+        """
+        Starts/ends the webserver.
+
+        Parameters
+        ----------
+        checked : bool
+            enable/disable
+        """
+        self.set_projection()
         if checked:
             self.open_browser_and_connect(
                 lambda: (
@@ -166,12 +210,12 @@ class Infra3d:
             # Listen on tracking signal
             self.infra3d_client.position_changed.connect(
                 lambda response: self.place_marker(
-                    QgsPointXY(response["easting"], response["northing"]),
+                    QgsPointXY(*self.point_transformer.transform(response["easting"], response["northing"])),
                     response["orientation"]
                 )
             )
         else:
-            self.iface.mapCanvas().unsetMapTool(self.infra3d_map_tool)
+            self.iface.mapCanvas().setMapTool(self.panTool)
             self.infra3d_client.unsetOnPositionChanged()
             try:
                 self.infra3d_client.position_changed.disconnect()
@@ -184,6 +228,9 @@ class Infra3d:
             self.infra3d_marker.hide()
 
     def start_infra3d_blocking(self):
+        """
+        Blocks infra3d
+        """
         if not self.start_infra3d_action.isChecked():
             # Wait until started
             QGuiApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
@@ -195,12 +242,21 @@ class Infra3d:
             QGuiApplication.restoreOverrideCursor()
 
     def set_infra3d_position(self, checked: bool):
+        """
+        Update the projection of the QGIS mapCanvas and enable/disable the position picker to define the position the viewer is supposed to jump to.
+
+        Parameters
+        ----------
+        checked : bool
+            Enable/disable
+        """
+        self.set_projection()
         if checked:
-            if bool(self.settings.value("/infra3d_viewer/load_pg_layer", False)) is True:
+            if str2bool(self.settings.value("/infra3d_viewer/load_pg_layer", 'false')):
                 self.add_infra3d_layers()
             self.iface.mapCanvas().setMapTool(self.infra3d_map_tool)
         else:
-            self.iface.mapCanvas().unsetMapTool(self.infra3d_map_tool)
+            self.iface.mapCanvas().setMapTool(self.panTool)
 
     def check_settings(self) -> bool:
         """Check whether the settings are configured propertly.
@@ -209,14 +265,18 @@ class Infra3d:
             bool: Return True if the settings are defined,
             otherwise returns False
         """
+        # TODO: remove settings or make layers selectable
 
         missing_configurations = []
-        if not self.settings.value("/infra3d_viewer/infra3d_username"):
-            missing_configurations.append("Infra3d username")
-        if not self.settings.value("/infra3d_viewer/infra3d_password"):
-            missing_configurations.append("Infra3d password")
+        # NOTE: Don't need that anymore
+        # if not self.settings.value("/infra3d_viewer/infra3d_username"):
+        #     missing_configurations.append("Infra3d username")
+        # if not self.settings.value("/infra3d_viewer/infra3d_password"):
+        #     missing_configurations.append("Infra3d password")
 
-        if bool(self.settings.value("/infra3d_viewer/load_pg_layer", False)) is True:
+        # NOTE: bool('false') --> True --- boolean operator on a string only returns false if string is empty
+        # NOTE: Therefore, we must compare the content with 'true'
+        if str2bool(self.settings.value('/infra3d_viewer/load_pg_layer', 'false')):
             if not self.settings.value("/infra3d_viewer/database/host"):
                 missing_configurations.append("DB host")
             if not self.settings.value("/infra3d_viewer/database/database"):
@@ -227,7 +287,6 @@ class Infra3d:
                 missing_configurations.append("Schema name")
             if not self.settings.value("/infra3d_viewer/database/geometry_column"):
                 missing_configurations.append("Geometry column")
-        print(missing_configurations)
         if len(missing_configurations) > 0:
             self.iface.messageBar().pushMessage(
                 "infra3DRoad",
@@ -257,14 +316,14 @@ class Infra3d:
         if self.socketio_server.running is False:
             QGuiApplication.restoreOverrideCursor()
             self.iface.messageBar().pushMessage(
-                "infra3DRoad",
-                self.tr("infra3DRoad server did not start correctly. Please restart QGIS"),
+                "infra3D",
+                self.tr("infra3D server did not start correctly. Please restart QGIS"),
                 Qgis.MessageLevel.Critical,  # type: ignore
                 5
             )
             return
 
-        # Check if settings are set correctly
+        # Check if settings are set correctly #TODO: remove settings or make layers selectable
         if self.check_settings() is False:
             QGuiApplication.restoreOverrideCursor()
             self.start_infra3d_action.setChecked(False)
@@ -293,12 +352,72 @@ class Infra3d:
                 self.settings.value("/infra3d_viewer/infra3d_password")
             )
         )
+        self.infra3d_client.network_changed.connect(
+            lambda: self.on_network_changed()
+        )
+        self.infra3d_client.network_received.connect(
+            lambda network: self.show_network(network)
+        )
         # All Infra3D functions can only be called after the Infra3D application
         # has been loaded(see `Infra3D.webapp_loaded` signal) and initialized.
         # The `webapp_initialized` signal is emitted when this is the case.
         # Only now can we call Infra3D functions or listen to Infra3D events.
         self.infra3d_client.webapp_initialized.connect(callback_after_init)
 
+    def on_network_changed(self) -> None:
+        """Update the map canvas zoom level to 1000 and zoom to the current marker position.
+
+        This function is called when the campaign is updated in Infra3D.
+        """
+        self.iface.mapCanvas().zoomScale(1000)
+        self.zoom_to_marker()
+        
+        
+    def show_network(self, network: json) -> None:
+        routes = network.get("routes")
+        if not routes or not routes.get("features"):
+            print("Error: Network does not contain valid features!")
+            return
+        geom_type = routes["features"][0]["geometry"]["type"]
+        
+        #mapping for styles
+        style_file = "infra3DRoad.qml" if geom_type.lower() == "linestring" else "infra3DHex.qml"
+        style_path = os.path.join(self.plugin_dir, style_file)
+        self._update_network_layer(routes, geom_type, style_path)
+        
+    def _update_network_layer(self, geojson_data: dict, geom_type: str, style_path: str) -> None:
+        layer_name = "Befahrungsnetz infra3D"
+        
+        # remove layer if exists
+        existing_layers = QgsProject.instance().mapLayersByName(layer_name)
+        if existing_layers:
+            QgsProject.instance().removeMapLayers([l.id() for l in existing_layers])
+        
+        # new mem layer
+        layer = QgsVectorLayer(f"{geom_type}?crs=EPSG:4326", layer_name, "memory")
+    
+        if not layer.isValid():
+            print("Fehler beim Erstellen des Layers")
+            return
+        
+        # fill layer with features
+        features = QgsJsonUtils.stringToFeatureList(json.dumps(geojson_data))
+        if features:
+            provider = layer.dataProvider()
+            success, _ = provider.addFeatures(list(features))
+        
+            #styling
+            if os.path.exists(style_path):
+                layer.loadNamedStyle(style_path)
+            
+            #add layer to project
+            QgsProject.instance().addMapLayer(layer)
+            layer.triggerRepaint()
+            
+            if not success:
+                print("Fehler beim Hinzufügen der Features")
+            
+        
     def place_marker(self, point: QgsPointXY, orientation: float):
         """Place the marker `self.infra3d_marker` on the map canvas and
         set the orientation.
@@ -309,7 +428,6 @@ class Infra3d:
         """
         if self.infra3d_marker.isVisible() is False:
             self.infra3d_marker.show()
-
         self.infra3d_marker.setRotation(int(orientation))
         self.infra3d_marker.setMapPosition(point)
 
@@ -320,6 +438,8 @@ class Infra3d:
         if not self.infra3d_marker.isVisible():
             return
 
+        
+        self.set_projection()
         self.iface.mapCanvas().setExtent(
             QgsRectangle(
                 self.infra3d_marker.current_position,
@@ -352,6 +472,7 @@ class Infra3d:
     def add_infra3d_layers(self):
         """Add infra3d layers
         """
+        # TODO: remove settings or make layers selectable
         uri = QgsDataSourceUri()
 
         uri.setConnection(
@@ -373,9 +494,9 @@ class Infra3d:
             layer = QgsVectorLayer(uri.uri(), "infra3DRoad", "postgres")
             if not layer.isValid():
                 self.iface.messageBar().pushMessage(
-                    "infra3DRoad",
+                    "infra3D",
                     self.tr(
-                        "Could not load Infra3dRoad layer"
+                        "Could not load infra3D layer"
                     ),
                     Qgis.MessageLevel.Warning,  # type: ignore
                     5
