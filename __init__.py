@@ -32,5 +32,6 @@ def classFactory(iface):  # pylint: disable=invalid-name
     :type iface: QgsInterface
     """
     #
-    from .infra3d_plugin import Infra3d
+    from .src.infra3d_plugin import Infra3d
+
     return Infra3d(iface)

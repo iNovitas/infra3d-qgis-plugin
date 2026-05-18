@@ -1,0 +1,343 @@
+:root {
+  --sidebar-width: 250px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Roboto", sans-serif;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#sidebar {
+  position: relative;
+  z-index: 10;
+
+  display: none; /* hide sidebar by default, show it when projects are loaded */
+  flex-direction: column;
+  flex-shrink: 0;
+
+  width: var(--sidebar-width);
+  background: white;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+
+  transition: width 0.3s ease;
+}
+
+#sidebar.closed {
+  width: 0;
+}
+
+#sidebarInner {
+  display: flex;
+  flex-direction: column;
+  width: var(--sidebar-width);
+  height: 100%;
+  transform: translateX(0);
+  transition: transform 0.3s ease;
+}
+
+#sidebar.closed #sidebarInner {
+  transform: translateX(-100%);
+}
+
+#projectToggle {
+  position: absolute;
+  bottom: 32px;
+  left: 100%;
+
+  transition: left 0.3s ease;
+
+  width: 64px;
+  height: 60px;
+
+  background-color: #053952;
+  cursor: pointer;
+  border-radius: 0px 10px 10px 0px;
+  color: white;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#projectContainer {
+  flex-grow: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px;
+}
+
+#error {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.projectCard {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border-radius: 4px;
+  box-shadow:
+    rgba(0, 0, 0, 0.2) 0px 3px 1px -2px,
+    rgba(0, 0, 0, 0.14) 0px 2px 2px 0px,
+    rgba(0, 0, 0, 0.12) 0px 1px 5px 0px;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.projectCard:hover p {
+  color: rgb(255, 103, 0);
+}
+
+#projectPlaceholder {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  gap: 16px;
+}
+
+#projectPlaceholder img {
+  width: 50%;
+  max-width: 500px;
+  object-fit: contain;
+}
+
+#loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20;
+  visibility: hidden;
+}
+
+#loadingOverlay.active {
+  visibility: visible;
+}
+
+@keyframes loadingFirst {
+  0% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  20% {
+    scale: 0.85;
+    fill: #0d92d2;
+  }
+
+  40% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  60% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  80% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  100% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+}
+
+@keyframes loadingSecond {
+  0% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  20% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  40% {
+    scale: 0.85;
+    fill: #0d92d2;
+  }
+
+  60% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  80% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  100% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+}
+
+@keyframes loadingThird {
+  0% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  20% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  40% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  60% {
+    scale: 0.85;
+    fill: #0d92d2;
+  }
+
+  80% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  100% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+}
+
+@keyframes loadingFourth {
+  0% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  20% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  40% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  60% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+
+  80% {
+    scale: 0.85;
+    fill: #0d92d2;
+  }
+
+  100% {
+    scale: 0.8;
+    fill: #dadada;
+  }
+}
+
+#error {
+  color: white;
+  background-color: #0b5f86;
+  cursor: pointer;
+}
+
+#error {
+  background-color: #ff6700;
+}
+
+#sidebarHeader {
+  padding: 8px 8px 0px 8px;
+}
+
+.folder-icon {
+  width: 24px;
+  height: 24px;
+}
+
+#content {
+  flex: 1;
+  transition: transform 0.3s ease;
+  z-index: 1;
+}
+
+#viewer {
+  height: 100%;
+}
+
+.text {
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 18px;
+  letter-spacing: 0px;
+  color: rgb(5, 57, 82);
+}
+
+.title {
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 24px;
+  letter-spacing: 0px;
+  color: rgb(5, 57, 82);
+}
+
+.infra3dButton {
+  display: inline-flex;
+  -moz-box-align: center;
+  align-items: center;
+  -moz-box-pack: center;
+  justify-content: center;
+  position: relative;
+  box-sizing: border-box;
+  background-color: transparent;
+  outline: 0px;
+  border: 0px;
+  margin: 0px auto;
+  cursor: pointer;
+  user-select: none;
+  vertical-align: middle;
+  appearance: none;
+  text-decoration: none;
+  text-align: center;
+  flex: 0 0 auto;
+  font-size: 1.5rem;
+  padding: 8px;
+  border-radius: 50%;
+  overflow: visible;
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  width: 40px;
+  color: white;
+}
+
+.infra3dButton:hover {
+  background-color: rgba(13, 146, 210, 0.3) !important;
+  color: rgb(255, 103, 0);
+}

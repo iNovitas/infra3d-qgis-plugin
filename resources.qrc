@@ -1,7 +1,0 @@
-<RCC>
-    <qresource prefix="/plugins/infra3d_viewer" >
-        <file>infra3d.png</file>
-        <file>infra3d_marker.png</file>
-        <file>infra3d_zoom.png</file>
-    </qresource>
-</RCC>
