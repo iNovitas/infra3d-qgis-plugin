@@ -21,6 +21,7 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 # -*- coding: utf-8 -*-
 
 import uuid
@@ -45,10 +46,10 @@ class Infra3dClient(QObject):
     # This pyqtSignal is used to signal that
     # the position in the Infra3D web app changed
     position_changed = pyqtSignal(dict)
+    azimuth_changed = pyqtSignal(dict)
     connection_failed = pyqtSignal(dict)
-    
+
     # signal for when new network is received
-    network_changed = pyqtSignal(dict)
     network_received = pyqtSignal(dict)
 
     def __init__(self, socketio_server_url):
@@ -71,62 +72,77 @@ class Infra3dClient(QObject):
         except socketio.exceptions.ConnectionError as e:
             QMessageBox.critical(
                 None,  # type: ignore
-                self.tr("infra3DRoad: Connection error"),
-                self.tr("Could not connect to the socketio server!")
+                self.tr("infra3D: Connection error"),
+                self.tr("Could not connect to the socketio server!"),
             )
-            self.connection_failed.emit
+            self.connection_failed.emit()
             return False
         self.__listen_on_remote_event("loaded", self.webapp_loaded.emit)
         return True
 
-    def init(self, username: str, password: str):
+    def init(self, tenant_identifier: str = "", start_project_uid: str = ""):
         """Call the JS method `initInfra3d` to start the initialization
         of Infra3D application in the browser.
         """
         self.__call_remote_method(
             "initInfra3d",
-            {}
+            {
+                "tenantIdentifier": tenant_identifier,
+                "startProjectUid": start_project_uid,
+            },
         )
         self.__listen_on_remote_event("initialized", self.webapp_initialized.emit)
-        # The listener for changing campaigns can be added here as it is first fired when the viewer is initialized
-        self.__listen_on_remote_event("networkChanged", self.network_changed.emit) 
 
     def setOnPositionChanged(self):
         """Listen on the remote event `positionChanged` that is emitted
         whenever the Infra3D application in the browser changes the camera position.
         Everytime the event is emitted, the QT signal positionChanged is emitted too.
-
         """
-        self.__call_remote_method("setOnPositionChanged", {})
         self.__listen_on_remote_event("positionChanged", self.position_changed.emit)
+        self.__listen_on_remote_event("azimuthChanged", self.azimuth_changed.emit)
 
-    def unsetOnPositionChanged(self):
-        """Stop listening on remote event `positionChanged`
-        """
-        self.__call_remote_method("unsetOnPositionChanged", {})
-        
-    def getNetwork(self, scale: float, eMin: float, eMax: float, nMin: float, nMax: float) -> None:
+    def getNetwork(
+        self,
+        level: str,
+        loa: int,
+        minEasting: float,
+        maxEasting: float,
+        minNorthing: float,
+        maxNorthing: float,
+        epsg: int,
+    ) -> None:
         """
         Call frontend method to retreive the road-network and listen to its response.
 
         Parameters
         ----------
-        eMin : float
+        level : str
+            The level of detail of the road network. Can be "routes", "routeLines" or "routeHexes"
+        loa : int
+            The level of accuracy of the road network. Can be 0, 1 or 2.
+        minEasting : float
             Bounding Box coordinate of the left edge
-        eMax : float
+        maxEasting : float
             Bounding Box coordinate of the right edge
-        nMin : float
+        minNorthing : float
             Bounding Box coordinate of the lower edge
-        nMax : float
+        maxNorthing : float
             Bounding Box coordinate of the upper edge
+        epsg : int
+            EPSG code for the coordinate system
         """
-        self.__call_remote_method("getNetwork", {
-            "scale": scale,
-            "eMin": eMin,
-            "eMax": eMax,
-            "nMin": nMin,
-            "nMax": nMax
-        })
+        self.__call_remote_method(
+            "getNetwork",
+            {
+                "level": level,
+                "loa": loa,
+                "minEasting": minEasting,
+                "maxEasting": maxEasting,
+                "minNorthing": minNorthing,
+                "maxNorthing": maxNorthing,
+                "epsg": epsg,
+            },
+        )
         self.__listen_on_remote_event("newNetwork", self.network_received.emit)
 
     def lookAt2DPosition(self, easting: float, northing: float):
@@ -136,13 +152,9 @@ class Infra3dClient(QObject):
             easting (float): Coordinate E
             northing (float): Coordinate N
         """
-        self.__call_remote_method("lookAt2DPosition", {"easting": easting, "northing": northing})
-        
-    # def networkReceived(self) -> None:
-    #     """
-    #     Receive the network from infra3d to show in QGIS.
-    #     """
-    #     self.__listen_on_remote_event("networkChanged", self.network_changed.emit)
+        self.__call_remote_method(
+            "lookAt2DPosition", {"easting": easting, "northing": northing}
+        )
 
     def __call_remote_method(self, method_name: str, args: dict):
         """Helper method to call a remote method.
@@ -155,11 +167,7 @@ class Infra3dClient(QObject):
             args (dict): Method arguments to pass
         """
         self.connect()
-        request = {
-            "id": str(uuid.uuid1()),
-            "method": method_name,
-            "args": args
-        }
+        request = {"id": str(uuid.uuid1()), "method": method_name, "args": args}
 
         try:
             self.sio.emit("rpcrequest", data=request)
@@ -182,7 +190,14 @@ class Infra3dClient(QObject):
         self.connect()
         self.sio.on(event_name, handler=handler)
 
-    def disconnect(self):
-        """Disconnect from the socketio server
+    def __unlisten_on_remote_event(self, event_name: str):
+        """Helper method to unlisten on a remote event.
+
+        Args:
+            event_name (str): Event name to stop listening to
         """
+        self.sio.off(event_name)
+
+    def disconnect(self):
+        """Disconnect from the socketio server"""
         self.sio.disconnect()

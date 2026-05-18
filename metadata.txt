@@ -1,29 +1,27 @@
 [general]
 name=infra3D plugin
-qgisMinimumVersion=3.42
+qgisMinimumVersion=4.0.0
 description=This plugin is an integration of the infra3D application with QGIS
 version=0.3.0
-author=iNovitas, FHNW IGEO
-email=info@inovitas.ch
+author=iNovitas AG
+email=support@inovitas.ch
 about=This plugin is an integration of the infra3D application with QGIS
-supportsQt6=True
 
-tracker=https://github.com/FHNW-IGEO/Infra3DPlugin/issues
-repository=https://github.com/FHNW-IGEO/Infra3DPlugin
+tracker=https://inovitas.atlassian.net/servicedesk/customer/portal/1
+repository=https://github.com/iNovitas/infra3d-qgis-plugin/
 # End of mandatory metadata
 
 # Recommended items:
 
 hasProcessingProvider=no
-# Uncomment the following line and add your changelog:
-# changelog=
+changelog=https://github.com/iNovitas/infra3d-qgis-plugin/blob/main/CHANGELOG.md
 
 # Tags are comma separated with spaces allowed
-tags=python, infra3D, StreetView Service
+tags=python, infra3D, StreetView Service, mobile mapping, road, rail
 
 homepage=https://www.inovitas.ch/
 category=Web
-icon=infra3d.png
+icon=resources/infra3d.svg
 # experimental flag
 experimental=False
 

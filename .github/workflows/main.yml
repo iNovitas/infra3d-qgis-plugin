@@ -3,21 +3,19 @@ name: Package Infra3d plugin with dependencies
 on:
   push:
     tags:
-      - '*'
+      - "*"
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
-
       - uses: actions/checkout@master
 
       - run: |
           pip wheel -r requirements.txt -w dependencies/wheels
           pip install --no-index --find-links dependencies/wheels/ --target dependencies/site-packages -r requirements.txt
           mkdir Infra3DPlugin
-          mv dependencies/ server/ ui/ i18n/ *.py metadata.txt infra3d.png infra3DRoad.qml Infra3DPlugin/
+          mv dependencies/ server/ ui/ i18n/ resources/ *.py metadata.txt Infra3DPlugin/
           zip -r Infra3DPlugin.zip Infra3DPlugin/
 
       - name: Create release

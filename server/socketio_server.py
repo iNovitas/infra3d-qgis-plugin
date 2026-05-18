@@ -21,6 +21,7 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 import platform
 import logging
 
@@ -33,12 +34,18 @@ class SocketIOServer:
     def __init__(self):
         self.app = Flask(__name__)
         self.app.config["SECRET_KEY"] = "secret!"
-        
+
         # disable "werkzeug" logger
-        log = logging.getLogger('werkzeug')
+        log = logging.getLogger("werkzeug")
         log.setLevel(logging.ERROR)
         self.app.logger.setLevel(logging.ERROR)
-        self.socketio = SocketIO(self.app, async_mode="threading", logger=False, engineio_logger=False, max_http_buffer_size= 50 * 1024**2)
+        self.socketio = SocketIO(
+            self.app,
+            async_mode="threading",
+            logger=False,
+            engineio_logger=False,
+            max_http_buffer_size=50 * 1024**2,
+        )
         self.running = False
 
         # Register socketio events
@@ -109,7 +116,6 @@ class SocketIOServer:
         """Start the socketio server
 
         Args:
-            port (int): Port to bind to
             debug (bool): Debug mode on / off
         """
         self.running = True
@@ -118,7 +124,8 @@ class SocketIOServer:
         if platform.system().lower() == "windows":
             import os
             import sys
-            sys.stdout = open(os.devnull, 'w')
+
+            sys.stdout = open(os.devnull, "w")
 
         # This socketio server is only intended to be used
         # by one client (the QGIS plugin on the local machine)
@@ -128,10 +135,10 @@ class SocketIOServer:
             host="127.0.0.1",
             port=port,
             debug=debug,
-            allow_unsafe_werkzeug=True
+            allow_unsafe_werkzeug=True,
         )
 
 
 if __name__ == "__main__":
     server = SocketIOServer()
-    server.start(debug=True)
+    server.start()

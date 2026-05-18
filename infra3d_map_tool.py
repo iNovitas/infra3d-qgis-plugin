@@ -21,17 +21,27 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 from qgis.core import QgsProject, QgsSnappingUtils, QgsPointLocator, QgsPointXY, Qgis
-from qgis.gui import QgsMapToolEmitPoint, QgisInterface, QgsMapMouseEvent, QgsSnapIndicator
+from qgis.gui import (
+    QgsMapToolEmitPoint,
+    QgisInterface,
+    QgsMapMouseEvent,
+    QgsSnapIndicator,
+)
 from typing import Callable
 
-from .marker_map_item import MarkerMapItem
 from .infra3d_client import Infra3dClient
 
 
 class Infra3dMapTool(QgsMapToolEmitPoint):
 
-    def __init__(self, iface: QgisInterface, infra3d_client: Infra3dClient, infra3d_marker: MarkerMapItem, callback_start_infra3d: Callable ):
+    def __init__(
+        self,
+        iface: QgisInterface,
+        infra3d_client: Infra3dClient,
+        callback_start_infra3d: Callable,
+    ):
         super(Infra3dMapTool, self).__init__(iface.mapCanvas())
         self.iface = iface
         self.map_canvas = self.iface.mapCanvas()
@@ -41,16 +51,15 @@ class Infra3dMapTool(QgsMapToolEmitPoint):
 
         self.infra3d_client = infra3d_client
         self.canvasClicked.connect(self.set_infra3d_position)
-        self.infra3d_marker = infra3d_marker
         self.callback_start_infra3d = callback_start_infra3d
 
     def initLocator(self):
-        layer = QgsProject.instance().mapLayersByName("infra3DRoad")
+        layer = QgsProject.instance().mapLayersByName("infra3D")
         if len(layer) > 0:
             self.locator = QgsSnappingUtils(self.map_canvas).locatorForLayer(layer[0])
 
     def canvasMoveEvent(self, mouseEvent: QgsMapMouseEvent):
-        """Custom snapper for Infra3DRoad layer
+        """Custom snapper for Infra3D layer
 
         Args:
             mouseEvent (QgsMapMouseEvent): Mouse event
@@ -68,25 +77,18 @@ class Infra3dMapTool(QgsMapToolEmitPoint):
         """
         self.callback_start_infra3d()
 
-        if self.infra3d_marker.isVisible() is False:
-            self.infra3d_marker.show()
-
         if not self.locator:
             self.infra3d_client.lookAt2DPosition(point.x(), point.y())
-            self.infra3d_marker.setMapPosition(point)
         # Get point from snapper
         elif self.snapper.match().isValid():
             point = self.snapper.match().point()
             self.infra3d_client.lookAt2DPosition(point.x(), point.y())
-            self.infra3d_marker.setMapPosition(point)
         else:
             self.iface.messageBar().pushMessage(
                 "Infra3D",
-                self.tr(
-                    "No image found for the selected position."
-                ),
+                self.tr("No image found for the selected position."),
                 Qgis.MessageLevel.Critical,  # type: ignore
-                5
+                5,
             )
 
         self.snapper.setMatch(QgsPointLocator.Match())

@@ -30,8 +30,8 @@
     </message>
     <message>
         <location filename="../ui/settings.ui" line="14"/>
-        <source>infra3DRoad Settings</source>
-        <translation>infra3DRoad Einstellungen</translation>
+        <source>infra3D Settings</source>
+        <translation>infra3D Einstellungen</translation>
     </message>
     <message>
         <location filename="../ui/settings.ui" line="58"/>
@@ -84,7 +84,7 @@
     <message>
         <location filename="../infra3d_settings.py" line="73"/>
         <source>Infra3D: Server port changed</source>
-        <translation>infra3DRoad: Der Serverport wurde gewechselt</translation>
+        <translation>infra3D: Der Serverport wurde gewechselt</translation>
     </message>
     <message>
         <location filename="../infra3d_settings.py" line="73"/>
@@ -96,8 +96,8 @@
     <name>Infra3d</name>
     <message>
         <location filename="../infra3d_plugin.py" line="122"/>
-        <source>Set infra3DRoad position</source>
-        <translation>infra3DRoad Position setzen</translation>
+        <source>Set infra3D position</source>
+        <translation>infra3D Position setzen</translation>
     </message>
     <message>
         <location filename="../infra3d_plugin.py" line="129"/>
@@ -106,23 +106,23 @@
     </message>
     <message>
         <location filename="../infra3d_plugin.py" line="133"/>
-        <source>Enable infra3DRoad</source>
-        <translation>infra3DRoad aktivieren</translation>
+        <source>Enable infra3D</source>
+        <translation>infra3D aktivieren</translation>
     </message>
     <message>
         <location filename="../infra3d_plugin.py" line="151"/>
-        <source>infra3DRoad</source>
+        <source>infra3D</source>
         <translation></translation>
     </message>
     <message>
         <location filename="../infra3d_plugin.py" line="259"/>
-        <source>infra3DRoad server did not start correctly. Please restart QGIS</source>
-        <translation>Der infra3DRoad Server konnte nicht korrekt gestartet werden. Bitte QGIS neustarten</translation>
+        <source>infra3D server did not start correctly. Please restart QGIS</source>
+        <translation>Der infra3D Server konnte nicht korrekt gestartet werden. Bitte QGIS neustarten</translation>
     </message>
     <message>
         <location filename="../infra3d_plugin.py" line="375"/>
-        <source>Could not load Infra3dRoad layer</source>
-        <translation>Der infra3DRoad Layer konnte nicht geladen werden</translation>
+        <source>Could not load Infra3d layer</source>
+        <translation>Der infra3D Layer konnte nicht geladen werden</translation>
     </message>
     <message>
         <location filename="../infra3d_plugin.py" line="139"/>
@@ -139,8 +139,8 @@
     <name>Infra3dClient</name>
     <message>
         <location filename="../infra3d_client.py" line="68"/>
-        <source>infra3DRoad: Connection error</source>
-        <translation>infra3DRoad: Fehler beim Verbinden</translation>
+        <source>infra3D: Connection error</source>
+        <translation>infra3D: Fehler beim Verbinden</translation>
     </message>
     <message>
         <location filename="../infra3d_client.py" line="68"/>

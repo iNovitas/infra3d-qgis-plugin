@@ -6,193 +6,298 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>491</width>
+    <width>490</width>
     <height>480</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>infra3DRoad Settings</string>
+   <string>infra3D Settings</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
-   <item row="1" column="0">
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
+  <layout class="QVBoxLayout" name="verticalLayout_3">
+   <item>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
      </property>
-     <property name="standardButtons">
-      <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Save</set>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="0">
-    <layout class="QGridLayout" name="gridLayout_2">
-     <item row="3" column="1">
-      <widget class="QSpinBox" name="server_port_spinBox">
-       <property name="toolTip">
-        <string>Port number which the local socketio server will bind to</string>
-       </property>
-       <property name="minimum">
-        <number>1025</number>
-       </property>
-       <property name="maximum">
-        <number>65535</number>
-       </property>
-       <property name="value">
-        <number>5000</number>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="1">
-      <widget class="QLineEdit" name="infra3d_password_lineEdit">
-       <property name="inputMethodHints">
-        <set>Qt::InputMethodHint::ImhNoAutoUppercase|Qt::InputMethodHint::ImhNoPredictiveText|Qt::InputMethodHint::ImhSensitiveData</set>
-       </property>
-       <property name="echoMode">
-        <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="6" column="0">
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Infra3d Password</string>
-       </property>
-      </widget>
-     </item>
-     <item row="7" column="0" colspan="2">
-      <widget class="QGroupBox" name="infra3d_groupBox">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="title">
-        <string>Infra3d layer</string>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-       <property name="checked">
-        <bool>false</bool>
-       </property>
-       <layout class="QGridLayout" name="gridLayout_6">
-        <item row="0" column="0">
-         <layout class="QGridLayout" name="gridLayout_5">
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_5">
+     <widget class="QWidget" name="General">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <attribute name="title">
+       <string>General</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <widget class="QgsCollapsibleGroupBox" name="groupBox_General">
+         <property name="title">
+          <string>General</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_2">
+          <item row="6" column="1">
+           <widget class="QLineEdit" name="lineEdit_startProjectUID">
+            <property name="inputMethodHints">
+             <set>Qt::InputMethodHint::ImhNone</set>
+            </property>
+            <property name="echoMode">
+             <enum>QLineEdit::EchoMode::Normal</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_2">
             <property name="text">
-             <string>Username</string>
+             <string>Start Project UID</string>
+            </property>
+            <property name="toolTip">
+             <string>The Project UID can be found in the Standalone Application in the URL</string>
+            </property>
+           </widget>
+          </item>    
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Tenant Identifier</string>
             </property>
            </widget>
           </item>
           <item row="5" column="1">
-           <widget class="QLineEdit" name="pg_table_lineEdit"/>
-          </item>
-          <item row="6" column="0">
-           <widget class="QLabel" name="label_10">
-            <property name="text">
-             <string>Schema</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="1">
-           <widget class="QLineEdit" name="pg_database_lineEdit"/>
-          </item>
-          <item row="6" column="1">
-           <widget class="QLineEdit" name="pg_schema_lineEdit"/>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_6">
-            <property name="text">
-             <string>Password</string>
+           <widget class="QLineEdit" name="lineEdit_tenantIdentifier">
+            <property name="focusPolicy">
+             <enum>Qt::FocusPolicy::StrongFocus</enum>
             </property>
            </widget>
           </item>
           <item row="7" column="0">
-           <widget class="QLabel" name="label_11">
+           <widget class="QLabel" name="label">
             <property name="text">
-             <string>Geometry column</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
-           <widget class="QLineEdit" name="pg_password_lineEdit">
-            <property name="echoMode">
-             <enum>QLineEdit::EchoMode::PasswordEchoOnEdit</enum>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QLineEdit" name="pg_host_lineEdit"/>
-          </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="label_7">
-            <property name="text">
-             <string>Database</string>
+             <string>Server port number</string>
             </property>
            </widget>
           </item>
           <item row="7" column="1">
-           <widget class="QLineEdit" name="pg_geom_lineEdit">
-            <property name="text">
-             <string>wkb_geoemtry</string>
+           <widget class="QSpinBox" name="spinBox_serverPort">
+            <property name="toolTip">
+             <string>Port number which the local socketio server will bind to</string>
             </property>
-           </widget>
-          </item>
-          <item row="5" column="0">
-           <widget class="QLabel" name="label_9">
-            <property name="text">
-             <string>Table</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_4">
-            <property name="text">
-             <string>Host</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLineEdit" name="pg_username_lineEdit"/>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_8">
-            <property name="text">
-             <string>Port</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QSpinBox" name="pg_port_spinBox">
             <property name="minimum">
-             <number>1</number>
+             <number>1025</number>
             </property>
             <property name="maximum">
              <number>65535</number>
             </property>
             <property name="value">
-             <number>5432</number>
+             <number>5000</number>
             </property>
            </widget>
           </item>
          </layout>
-        </item>
-       </layout>
-      </widget>
-     </item>
-     <item row="5" column="0">
-      <widget class="QLabel" name="label_3">
+        </widget>
+       </item>
+       <item>
+        <widget class="QgsCollapsibleGroupBox" name="groupBox_LayerNames">
+         <property name="title">
+          <string>Layer Names</string>
+         </property>
+         <property name="collapsed">
+          <bool>false</bool>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_3">
+          <item row="5" column="2">
+           <widget class="QLineEdit" name="lineEdit_layerGroup"/>
+          </item>
+          <item row="6" column="2">
+           <widget class="QLineEdit" name="lineEdit_currentPositionLayer">
+            <property name="inputMethodHints">
+             <set>Qt::InputMethodHint::ImhNone</set>
+            </property>
+            <property name="echoMode">
+             <enum>QLineEdit::EchoMode::Normal</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="label_6">
+            <property name="text">
+             <string>Network Layer Lines</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0">
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string>Network Layer Hexes</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Current Position Layer</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Layer Group</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="2">
+           <widget class="QLineEdit" name="lineEdit_networkLayerLines">
+            <property name="inputMethodHints">
+             <set>Qt::InputMethodHint::ImhNone</set>
+            </property>
+            <property name="echoMode">
+             <enum>QLineEdit::EchoMode::Normal</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="2">
+           <widget class="QLineEdit" name="lineEdit_networkLayerHexes"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="Advanced">
+      <attribute name="title">
+       <string>Advanced</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QgsCollapsibleGroupBox" name="groupBox_LoaRules">
+         <property name="title">
+          <string>Network Layer Config</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_3">
+          <item row="0" column="0">
+           <layout class="QHBoxLayout" name="horizontalLayout">
+            <item>
+             <spacer name="horizontalSpacer">
+              <property name="orientation">
+               <enum>Qt::Orientation::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>40</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_addLoaRule">
+              <property name="text">
+               <string/>
+              </property>
+              <property name="icon">
+               <iconset theme="QIcon::ThemeIcon::ListAdd"/>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_removeLoaRule">
+              <property name="text">
+               <string/>
+              </property>
+              <property name="icon">
+               <iconset theme="QIcon::ThemeIcon::ListRemove"/>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="1" column="0">
+           <widget class="QTableView" name="tableView_loaRules">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>220</height>
+             </size>
+            </property>
+            <property name="baseSize">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="showDropIndicator" stdset="0">
+             <bool>true</bool>
+            </property>
+            <property name="selectionMode">
+             <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+            </property>
+            <property name="selectionBehavior">
+             <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
+            </property>
+            <attribute name="horizontalHeaderCascadingSectionResizes">
+             <bool>true</bool>
+            </attribute>
+            <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+             <bool>true</bool>
+            </attribute>
+            <attribute name="verticalHeaderVisible">
+             <bool>true</bool>
+            </attribute>
+            <attribute name="verticalHeaderShowSortIndicator" stdset="0">
+             <bool>false</bool>
+            </attribute>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QPushButton" name="pushButton_resetPage">
        <property name="text">
-        <string>Infra3d Username</string>
+        <string>Reset Page</string>
        </property>
       </widget>
      </item>
-     <item row="5" column="1">
-      <widget class="QLineEdit" name="infra3d_username_lineEdit"/>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>Server port number</string>
+     <item>
+      <widget class="QDialogButtonBox" name="buttonBox">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="standardButtons">
+        <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Save</set>
        </property>
       </widget>
      </item>
@@ -200,19 +305,17 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsCollapsibleGroupBox</class>
+   <extends>QGroupBox</extends>
+   <header>qgscollapsiblegroupbox.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <tabstops>
-  <tabstop>server_port_spinBox</tabstop>
-  <tabstop>infra3d_username_lineEdit</tabstop>
-  <tabstop>infra3d_password_lineEdit</tabstop>
-  <tabstop>infra3d_groupBox</tabstop>
-  <tabstop>pg_host_lineEdit</tabstop>
-  <tabstop>pg_port_spinBox</tabstop>
-  <tabstop>pg_username_lineEdit</tabstop>
-  <tabstop>pg_password_lineEdit</tabstop>
-  <tabstop>pg_database_lineEdit</tabstop>
-  <tabstop>pg_table_lineEdit</tabstop>
-  <tabstop>pg_schema_lineEdit</tabstop>
-  <tabstop>pg_geom_lineEdit</tabstop>
+  <tabstop>lineEdit_tenantIdentifier</tabstop>
+  <tabstop>lineEdit_startProjectUID</tabstop>
  </tabstops>
  <resources/>
  <connections>

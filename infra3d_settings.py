@@ -1,5 +1,3 @@
-# TODO: remove settings or make layers selectable
-
 # -*- coding: utf-8 -*-
 """
 /***************************************************************************
@@ -23,89 +21,250 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 import os
 
+from .infra3d_settings_loarule import LoaRule, LoaRuleTableModel
+from qgis.core import Qgis, QgsApplication
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QMainWindow, QDialog, QDialogButtonBox, QMessageBox
-from qgis.PyQt.QtCore import QSettings
+from qgis.PyQt.QtCore import QSettings, QModelIndex, Qt, QSortFilterProxyModel
 
-
-FORM_CLASS, _ = uic.loadUiType(os.path.join(
-    os.path.dirname(__file__), 'ui/settings.ui'))
+FORM_CLASS, _ = uic.loadUiType(
+    os.path.join(os.path.dirname(__file__), "ui/settings.ui")
+)
 
 
 DEFAULT_SERVER_PORT = 5000
-DEFAULT_PG_SERVER_PORT = 5432
+DEFAULT_LAYER_GROUP = "infra3D"
+DEFAULT_LOA_RULES = [
+    {"type": "routes", "level": 0, "min": 0, "max": 1000},
+    {"type": "routeLines", "level": 0, "min": 1000, "max": 4000},
+    {"type": "routeLines", "level": 1, "min": 4000, "max": 70000},
+    {"type": "routeHexes", "level": 0, "min": 70000, "max": 250000},
+    {"type": "routeHexes", "level": 1, "min": 250000, "max": 1000000},
+    {"type": "routeHexes", "level": 2, "min": 1000000, "max": float("inf")},
+]
 
-def str2bool(s: str) -> bool:
-    """Convert a string to a boolean value.
-
-    The string is considered True if it is equal to 'true' (case insensitive).
-    All other strings are considered False.
-
-    Args:
-        s (str): The string to convert.
-
-    Returns:
-        bool: The boolean value of the string.
-    """
-    return s.lower() == 'true'
 
 class Infra3DSettings(QDialog, FORM_CLASS):
-
-    def __init__(self, parent: QMainWindow):
+    def __init__(self, parent: QMainWindow, iface):
         super(Infra3DSettings, self).__init__(parent)
+
+        self.default_current_position_layer = self.tr("Current Position")
+        self.default_network_layer_lines = self.tr("Network - Lines")
+        self.default_network_layer_hexes = self.tr("Network - Hexes")
+
         self.setupUi(self)
         self.settings = QSettings()
-        self.buttonBox.button(QDialogButtonBox.StandardButton.Save).clicked.connect(self.save_settings)
-        self.buttonBox.button(QDialogButtonBox.StandardButton.Cancel).clicked.connect(self.prefill_from_settings)
+        self.iface = iface
 
         # Get values from settings and prefill dialog
         self.prefill_from_settings()
+
+        self.loaModel = LoaRuleTableModel(self.loaRules, self)
+        self.tableView_loaRules.setModel(self.loaModel)
+
+        self.loaProxyModel = QSortFilterProxyModel(self)
+        self.loaProxyModel.setSourceModel(self.loaModel)
+
+        # IMPORTANT: enable correct numeric sorting
+        self.loaProxyModel.setSortRole(Qt.ItemDataRole.DisplayRole)
+        self.loaProxyModel.setDynamicSortFilter(True)
+
+        self.tableView_loaRules.setModel(self.loaProxyModel)
+        self.tableView_loaRules.setSortingEnabled(True)
+
+        # Set default sorting to ascending by min scale
+        self.tableView_loaRules.sortByColumn(2, Qt.SortOrder.AscendingOrder)
+
+        self.pushButton_addLoaRule.setIcon(
+            QgsApplication.getThemeIcon("symbologyAdd.svg")
+        )
+        self.pushButton_removeLoaRule.setIcon(
+            QgsApplication.getThemeIcon("symbologyRemove.svg")
+        )
+        self.pushButton_addLoaRule.clicked.connect(self.add_loa_rule)
+        self.pushButton_removeLoaRule.clicked.connect(self.remove_loa_rule)
+
+        self.pushButton_resetPage.clicked.connect(self.reset_page)
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Save).clicked.connect(
+            self.save_settings
+        )
+        self.buttonBox.button(QDialogButtonBox.StandardButton.Cancel).clicked.connect(
+            self.prefill_from_settings
+        )
 
     def prefill_from_settings(self):
         """Fill lineedits in the settings dialog with values from QSettings or
         just use default values
         """
         # Infra3D credentials
-        self.infra3d_username_lineEdit.setText(self.settings.value("/infra3d_viewer/infra3d_username"))
-        self.infra3d_password_lineEdit.setText(self.settings.value("/infra3d_viewer/infra3d_password"))
+        self.lineEdit_tenantIdentifier.setText(
+            self.settings.value("/infra3d_viewer/general/tenant_identifier")
+        )
+        self.lineEdit_startProjectUID.setText(
+            self.settings.value("/infra3d_viewer/general/start_project_uid")
+        )
         # SocketIO server
-        self.server_port_spinBox.setValue(int(self.settings.value("/infra3d_viewer/server_port", DEFAULT_SERVER_PORT)))
-        # Postgres server
-        # NOTE: bool('false') --> True --- boolean operator on a string only returns false if string is empty
-        # NOTE: Therefore, we must compare the content with 'true'
-        self.infra3d_groupBox.setChecked(str2bool(self.settings.value('/infra3d_viewer/load_pg_layer', 'false')))
-        self.pg_host_lineEdit.setText(self.settings.value('/infra3d_viewer/database/host'))
-        self.pg_port_spinBox.setValue(int(self.settings.value('/infra3d_viewer/database/port', DEFAULT_PG_SERVER_PORT)))
-        self.pg_username_lineEdit.setText(self.settings.value('/infra3d_viewer/database/username'))
-        self.pg_password_lineEdit.setText(self.settings.value('/infra3d_viewer/database/password'))
-        self.pg_database_lineEdit.setText(self.settings.value('/infra3d_viewer/database/database'))
-        self.pg_table_lineEdit.setText(self.settings.value('/infra3d_viewer/database/tablename'))
-        self.pg_schema_lineEdit.setText(self.settings.value('/infra3d_viewer/database/schema'))
-        self.pg_geom_lineEdit.setText(self.settings.value('/infra3d_viewer/database/geometry_column'))
+        self.spinBox_serverPort.setValue(
+            int(
+                self.settings.value(
+                    "/infra3d_viewer/general/server_port", DEFAULT_SERVER_PORT
+                )
+            )
+        )
+
+        self.lineEdit_layerGroup.setText(
+            self.settings.value(
+                "/infra3d_viewer/general/layer_group", DEFAULT_LAYER_GROUP
+            )
+        )
+        self.lineEdit_currentPositionLayer.setText(
+            self.settings.value(
+                "/infra3d_viewer/general/current_position_layer",
+                self.default_current_position_layer,
+            )
+        )
+        self.lineEdit_networkLayerLines.setText(
+            self.settings.value(
+                "/infra3d_viewer/general/network_layer_name_lines",
+                self.default_network_layer_lines,
+            )
+        )
+        self.lineEdit_networkLayerHexes.setText(
+            self.settings.value(
+                "/infra3d_viewer/general/network_layer_name_hexes",
+                self.default_network_layer_hexes,
+            )
+        )
+
+        stored_rules = self.settings.value(
+            "/infra3d_viewer/advanced/loa_rules", DEFAULT_LOA_RULES
+        )
+        self.loaRules = [
+            LoaRule(r["type"], r["level"], r["min"], r["max"]) for r in stored_rules
+        ]
 
     def save_settings(self):
-        if self.server_port_spinBox.value() != int(self.settings.value("/infra3d_viewer/server_port", DEFAULT_SERVER_PORT)):
+        if self.spinBox_serverPort.value() != int(
+            self.settings.value(
+                "/infra3d_viewer/general/server_port", DEFAULT_SERVER_PORT
+            )
+        ):
             QMessageBox.warning(
                 None,  # type: ignore
                 self.tr("Infra3D: Server port changed"),
-                self.tr("Restart QGIS for the port change to take effect!")
+                self.tr("Restart QGIS for the port change to take effect!"),
             )
 
         # Infra3D credentials
-        self.settings.setValue("/infra3d_viewer/infra3d_username", self.infra3d_username_lineEdit.text())
-        self.settings.setValue("/infra3d_viewer/infra3d_password", self.infra3d_password_lineEdit.text())
+        self.settings.setValue(
+            "/infra3d_viewer/general/tenant_identifier",
+            self.lineEdit_tenantIdentifier.text(),
+        )
+        self.settings.setValue(
+            "/infra3d_viewer/general/start_project_uid",
+            self.lineEdit_startProjectUID.text(),
+        )
         # SocketIO server
-        self.settings.setValue("/infra3d_viewer/server_port", self.server_port_spinBox.value())
-        # Postgres server
-        print("Load PG layer is set to:", self.infra3d_groupBox.isChecked())
-        self.settings.setValue('/infra3d_viewer/load_pg_layer', self.infra3d_groupBox.isChecked())
-        self.settings.setValue('/infra3d_viewer/database/host', self.pg_host_lineEdit.text())
-        self.settings.setValue('/infra3d_viewer/database/port', self.pg_port_spinBox.value())
-        self.settings.setValue('/infra3d_viewer/database/username', self.pg_username_lineEdit.text())
-        self.settings.setValue('/infra3d_viewer/database/password', self.pg_password_lineEdit.text())
-        self.settings.setValue('/infra3d_viewer/database/database', self.pg_database_lineEdit.text())
-        self.settings.setValue('/infra3d_viewer/database/tablename', self.pg_table_lineEdit.text())
-        self.settings.setValue('/infra3d_viewer/database/schema', self.pg_schema_lineEdit.text())
-        self.settings.setValue('/infra3d_viewer/database/geometry_column', self.pg_geom_lineEdit.text())
+        self.settings.setValue(
+            "/infra3d_viewer/general/server_port", self.spinBox_serverPort.value()
+        )
+
+        self.settings.setValue(
+            "/infra3d_viewer/general/layer_group", self.lineEdit_layerGroup.text()
+        )
+        self.settings.setValue(
+            "/infra3d_viewer/general/current_position_layer",
+            self.lineEdit_currentPositionLayer.text(),
+        )
+        self.settings.setValue(
+            "/infra3d_viewer/general/network_layer_name_lines",
+            self.lineEdit_networkLayerLines.text(),
+        )
+        self.settings.setValue(
+            "/infra3d_viewer/general/network_layer_name_hexes",
+            self.lineEdit_networkLayerHexes.text(),
+        )
+
+        self.settings.setValue(
+            "/infra3d_viewer/advanced/loa_rules",
+            [
+                {
+                    "type": r.type,
+                    "level": r.level,
+                    "min": r.minScale,
+                    "max": r.maxScale,
+                }
+                for r in self.loaModel.rules
+            ],
+        )
+
+    def add_loa_rule(self):
+        row = self.loaModel.rowCount()
+        self.loaModel.beginInsertRows(QModelIndex(), row, row)
+        self.loaModel.rules.append(LoaRule("routeLines", 0, 0, 0))
+        self.loaModel.endInsertRows()
+
+    def remove_loa_rule(self):
+        index = self.tableView_loaRules.currentIndex()
+        if not index.isValid():
+            return
+
+        row = index.row()
+        self.loaModel.beginRemoveRows(QModelIndex(), row, row)
+        del self.loaModel.rules[row]
+        self.loaModel.endRemoveRows()
+
+    def reset_page(self):
+        if self.tabWidget.currentIndex() == 0:
+            self.lineEdit_tenantIdentifier.setText("")
+            self.settings.setValue("/infra3d_viewer/general/tenant_identifier", "")
+            self.lineEdit_startProjectUID.setText("")
+            self.settings.setValue("/infra3d_viewer/general/start_project_uid", "")
+            self.spinBox_serverPort.setValue(DEFAULT_SERVER_PORT)
+            self.settings.setValue(
+                "/infra3d_viewer/general/server_port", DEFAULT_SERVER_PORT
+            )
+            self.lineEdit_layerGroup.setText(DEFAULT_LAYER_GROUP)
+            self.settings.setValue(
+                "/infra3d_viewer/general/layer_group", DEFAULT_LAYER_GROUP
+            )
+            self.lineEdit_currentPositionLayer.setText(
+                self.default_current_position_layer
+            )
+            self.settings.setValue(
+                "/infra3d_viewer/general/current_position_layer",
+                self.default_current_position_layer,
+            )
+            self.lineEdit_networkLayerLines.setText(self.default_network_layer_lines)
+            self.settings.setValue(
+                "/infra3d_viewer/general/network_layer_name_lines",
+                self.default_network_layer_lines,
+            )
+            self.lineEdit_networkLayerHexes.setText(self.default_network_layer_hexes)
+            self.settings.setValue(
+                "/infra3d_viewer/general/network_layer_name_hexes",
+                self.default_network_layer_hexes,
+            )
+        elif self.tabWidget.currentIndex() == 1:
+            self.loaRules = [
+                LoaRule(r["type"], r["level"], r["min"], r["max"])
+                for r in DEFAULT_LOA_RULES
+            ]
+            self.settings.setValue(
+                "/infra3d_viewer/advanced/loa_rules", DEFAULT_LOA_RULES
+            )
+            self.loaModel.beginResetModel()
+            self.loaModel.rules = self.loaRules
+            self.loaModel.endResetModel()
+        else:
+            self.iface.messageBar().pushMessage(
+                "infra3D",
+                "Page not reseted: Unknown page {}".format(
+                    self.tabWidget.currentIndex()
+                ),
+                Qgis.MessageLevel.Critical,
+                5,
+            )
