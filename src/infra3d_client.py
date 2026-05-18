@@ -77,7 +77,7 @@ class Infra3dClient(QObject):
                     "infra3D", "Could not connect to the socketio server!"
                 ),
             )
-            self.connection_failed.emit()
+            self.connection_failed.emit({})
             return False
         self.__listen_on_remote_event("loaded", self.webapp_loaded.emit)
         return True

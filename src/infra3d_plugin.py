@@ -47,10 +47,10 @@ from qgis.PyQt.QtCore import (
 from qgis.PyQt.QtGui import QIcon, QDesktopServices, QGuiApplication
 from qgis.PyQt.QtWidgets import QAction
 
-from .infra3d_settings import (
-    Infra3DSettings,
-    DEFAULT_SERVER_PORT,
+from .infra3d_settings_dialog import (
+    Infra3DSettingsDialog,
 )
+from .infra3d_settings import Infra3dSettings
 from .infra3d_client import Infra3dClient
 from .infra3d_map_tool import Infra3dMapTool
 from .infra3d_layer_utils import Infra3DLayerUtils
@@ -94,13 +94,11 @@ class Infra3d:
         self.actions = []
         self.toolbar = self.iface.addToolBar("infra3D")
         self.toolbar.setObjectName("infra3D")
-        self.settings = QSettings()
+        self.settings = Infra3dSettings()
 
         # Start socketio server
         self.socketio_server = SocketIOServer()
-        self.start_socketio_server(
-            self.settings.value("/infra3d_viewer/server_port", DEFAULT_SERVER_PORT)
-        )
+        self.start_socketio_server(self.settings.server_port)
 
         # Initialize Infra3D client
         self.infra3d_client = Infra3dClient(self.socketio_server_address())
@@ -126,6 +124,7 @@ class Infra3d:
         self.start_infra3d_action = QAction(
             QIcon("icons:infra3d.svg"),
             QCoreApplication.translate("infra3D", "Enable infra3D"),
+            self.iface.mainWindow(),
         )
         self.start_infra3d_action.toggled.connect(self.start_infra3d)
         self.start_infra3d_action.setCheckable(True)
@@ -153,7 +152,9 @@ class Infra3d:
         self.zoom_to_marker_action.triggered.connect(self.zoom_to_marker)
         self.actions.append(self.zoom_to_marker_action)
 
-        self.infra3d_settings = Infra3DSettings(self.iface.mainWindow(), self.iface)
+        self.infra3d_settings = Infra3DSettingsDialog(
+            self.iface.mainWindow(), self.iface, self.settings
+        )
         self.show_settings_action = QAction(
             QIcon(":/images/themes/default/mActionOptions.svg"),
             QCoreApplication.translate("infra3D", "Settings"),
@@ -184,7 +185,7 @@ class Infra3d:
             epsg_number = epsg.split(":")[1] if ":" in epsg else epsg
 
             scale = self.iface.mapCanvas().scale()
-            loa_rules = self.settings.value("/infra3d_viewer/advanced/loa_rules", None)
+            loa_rules = self.settings.loa_rules
 
             if loa_rules is not None:
                 loa_rule = next(
@@ -381,8 +382,7 @@ class Infra3d:
         This function is called when the `webapp_loaded` signal is emitted.
         """
         self.infra3d_client.init(
-            self.settings.value("/infra3d_viewer/general/tenant_identifier"),
-            self.settings.value("/infra3d_viewer/general/start_project_uid"),
+            self.settings.tenant_identifier, self.settings.start_project_uid
         )
 
     def show_network(self, network: json) -> None:
@@ -455,4 +455,4 @@ class Infra3d:
         Returns:
             str: Server address
         """
-        return f"http://127.0.0.1:{self.settings.value('/infra3d_viewer/server_port', DEFAULT_SERVER_PORT)}"
+        return f"http://127.0.0.1:{self.settings.server_port}"

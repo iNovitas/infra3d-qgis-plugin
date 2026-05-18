@@ -1,6 +1,7 @@
 import json
 import os
 
+from .infra3d_settings import Infra3dSettings
 from qgis.core import (
     Qgis,
     QgsProject,
@@ -10,11 +11,11 @@ from qgis.core import (
     QgsGeometry,
     QgsPointXY,
 )
-from qgis.PyQt.QtCore import QSettings, QObject, QCoreApplication
+from qgis.PyQt.QtCore import QObject, QCoreApplication
 
 
 class Infra3DLayerUtils(QObject):
-    def __init__(self, iface, settings: QSettings):
+    def __init__(self, iface, settings: Infra3dSettings):
         self.iface = iface
         self.settings = settings
 
@@ -30,20 +31,20 @@ class Infra3DLayerUtils(QObject):
         self.marker_azimuth: float = 0.0
 
     def add_layers(self):
-        group_name = self.settings.value("/infra3d_viewer/general/layer_group")
+        group_name = self.settings.layer_group
 
         project = QgsProject.instance()
         root = project.layerTreeRoot()
 
-        if self.layer_group is None:
+        # Check if group already exists by name
+        existing_group = root.findGroup(group_name)
+        if existing_group:
+            self.layer_group = existing_group
+        else:
             self.layer_group = root.insertGroup(0, group_name)
 
-        layer_name_lines = self.settings.value(
-            "/infra3d_viewer/general/network_layer_name_lines"
-        )
-        layer_name_hexes = self.settings.value(
-            "/infra3d_viewer/general/network_layer_name_hexes"
-        )
+        layer_name_lines = self.settings.network_layer_name_lines
+        layer_name_hexes = self.settings.network_layer_name_hexes
 
         self.marker_layer_id = self._init_marker_layer()
 
@@ -60,7 +61,7 @@ class Infra3DLayerUtils(QObject):
             self.network_layer_lines_id = None
         else:
             layer = QgsProject.instance().mapLayersByName(
-                self.settings.value("/infra3d_viewer/general/network_layer_name_lines")
+                self.settings.network_layer_name_lines
             )
             if layer:
                 for lyr in layer:
@@ -71,7 +72,7 @@ class Infra3DLayerUtils(QObject):
             self.network_layer_hexes_id = None
         else:
             layer = QgsProject.instance().mapLayersByName(
-                self.settings.value("/infra3d_viewer/general/network_layer_name_hexes")
+                self.settings.network_layer_name_hexes
             )
             if layer:
                 for lyr in layer:
@@ -81,20 +82,16 @@ class Infra3DLayerUtils(QObject):
             QgsProject.instance().layerTreeRoot().removeChildNode(self.layer_group)
             self.layer_group = None
         else:
-            layer = QgsProject.instance().mapLayersByName(
-                self.settings.value("/infra3d_viewer/general/layer_group")
-            )
+            layer = QgsProject.instance().mapLayersByName(self.settings.layer_group)
             if layer:
                 for lyr in layer:
                     QgsProject.instance().removeMapLayer(lyr.id())
 
     def _init_marker_layer(self):
-        layer_name = self.settings.value(
-            "/infra3d_viewer/general/current_position_layer"
-        )
+        layer_name = self.settings.current_position_layer
         existing_layers = QgsProject.instance().mapLayersByName(layer_name)
         if existing_layers:
-            return
+            return existing_layers[0].id()
 
         # new mem layer
         layer = QgsVectorLayer(
@@ -129,7 +126,7 @@ class Infra3DLayerUtils(QObject):
     def _init_network_layer(self, layer_name: str, geom_type: str) -> QgsVectorLayer:
         existing_layers = QgsProject.instance().mapLayersByName(layer_name)
         if existing_layers:
-            return
+            return existing_layers[0].id()
 
         # new mem layer
         layer = QgsVectorLayer(f"{geom_type}?crs=EPSG:4326", layer_name, "memory")
@@ -174,10 +171,14 @@ class Infra3DLayerUtils(QObject):
         if features:
             if geom_type.lower() in ["linestring", "multilinestring"]:
                 layer = QgsProject.instance().mapLayer(self.network_layer_lines_id)
-                self.network_layer_hexes_id = None
+                other_layer = QgsProject.instance().mapLayer(
+                    self.network_layer_hexes_id
+                )
             elif geom_type.lower() in ["polygon", "multipolygon"]:
                 layer = QgsProject.instance().mapLayer(self.network_layer_hexes_id)
-                self.network_layer_lines_id = None
+                other_layer = QgsProject.instance().mapLayer(
+                    self.network_layer_lines_id
+                )
             else:
                 self.iface.messageBar().pushMessage(
                     "infra3D",
@@ -190,8 +191,11 @@ class Infra3DLayerUtils(QObject):
                 )
                 return
 
-            if layer is None:
+            if layer is None or other_layer is None:
                 return
+
+            other_layer.dataProvider().truncate()  # clear the other layer to avoid stale features
+            other_layer.triggerRepaint()
 
             provider = layer.dataProvider()
             provider.truncate()  # remove existing features

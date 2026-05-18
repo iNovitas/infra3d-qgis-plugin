@@ -1,6 +1,7 @@
 [general]
 name=infra3D plugin
-qgisMinimumVersion=4.0.0
+qgisMinimumVersion=3.0
+qgisMaximumVersion=4.99
 description=This plugin is an integration of the infra3D application with QGIS
 version=1.0.0
 author=iNovitas AG
