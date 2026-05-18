@@ -10,7 +10,7 @@ from qgis.core import (
     QgsGeometry,
     QgsPointXY,
 )
-from qgis.PyQt.QtCore import QSettings, QObject
+from qgis.PyQt.QtCore import QSettings, QObject, QCoreApplication
 
 
 class Infra3DLayerUtils(QObject):
@@ -108,7 +108,7 @@ class Infra3DLayerUtils(QObject):
         if not layer.isValid():
             self.iface.messageBar().pushMessage(
                 "infra3D",
-                self.tr("Failed to create marker layer!"),
+                QCoreApplication.translate("infra3D", "Failed to create marker layer!"),
                 Qgis.MessageLevel.Critical,
                 5,
             )
@@ -141,7 +141,9 @@ class Infra3DLayerUtils(QObject):
         if not layer.isValid():
             self.iface.messageBar().pushMessage(
                 "infra3D",
-                self.tr("Failed to create network layer!"),
+                QCoreApplication.translate(
+                    "infra3D", "Failed to create network layer!"
+                ),
                 Qgis.MessageLevel.Critical,
                 5,
             )
@@ -179,7 +181,10 @@ class Infra3DLayerUtils(QObject):
             else:
                 self.iface.messageBar().pushMessage(
                     "infra3D",
-                    self.tr("Unknown geometry type received: ") + geom_type,
+                    QCoreApplication.translate(
+                        "infra3D", "Unknown geometry type received: "
+                    )
+                    + geom_type,
                     Qgis.MessageLevel.Warning,
                     5,
                 )
@@ -197,7 +202,9 @@ class Infra3DLayerUtils(QObject):
             if not success:
                 self.iface.messageBar().pushMessage(
                     "infra3D",
-                    self.tr("Failed to add features to network layer!"),
+                    QCoreApplication.translate(
+                        "infra3D", "Failed to add features to network layer!"
+                    ),
                     Qgis.MessageLevel.Critical,
                     5,
                 )
@@ -207,7 +214,7 @@ class Infra3DLayerUtils(QObject):
         if layer is None:
             self.iface.messageBar().pushMessage(
                 "infra3D",
-                self.tr("Marker layer not initialized!"),
+                QCoreApplication.translate("infra3D", "Marker layer not initialized!"),
                 Qgis.MessageLevel.Critical,
                 5,
             )
@@ -237,7 +244,9 @@ class Infra3DLayerUtils(QObject):
         if not success:
             self.iface.messageBar().pushMessage(
                 "infra3D",
-                self.tr("Failed to add features to marker layer!"),
+                QCoreApplication.translate(
+                    "infra3D", "Failed to add features to marker layer!"
+                ),
                 Qgis.MessageLevel.Critical,
                 5,
             )

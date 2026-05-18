@@ -29,7 +29,9 @@ from pyproj import Transformer
 import json
 
 # Add prepackaged dependencies to PYTHONPATH so the plugin can use them
-sys.path.append(os.path.join(os.path.dirname(__file__), "dependencies/site-packages"))
+sys.path.append(
+    os.path.join(os.path.dirname(__file__), "../dependencies/site-packages")
+)
 
 from qgis.gui import QgisInterface, QgsMapToolPan
 from qgis.core import Qgis, QgsPointXY, QgsRectangle
@@ -70,7 +72,7 @@ class Infra3d:
         self.iface = iface
 
         # initialize plugin directory
-        self.plugin_dir = os.path.dirname(__file__)
+        self.plugin_dir = os.path.join(os.path.dirname(__file__), "..")
 
         # Init the icons path
         QDir.addSearchPath("icons", os.path.join(self.plugin_dir, "resources"))
@@ -78,7 +80,7 @@ class Infra3d:
         # initialize locale
         locale = QSettings().value("locale/userLocale", "en")[0:2]
         locale_path = os.path.join(
-            self.plugin_dir, "i18n", "Infra3d_{}.qm".format(locale)
+            self.plugin_dir, "i18n", "infra3d_{}.qm".format(locale)
         )
 
         if os.path.exists(locale_path):
@@ -112,21 +114,6 @@ class Infra3d:
 
         self.layer_utils = Infra3DLayerUtils(self.iface, self.settings)
 
-    # noinspection PyMethodMayBeStatic
-    def tr(self, message: str) -> str:
-        """Get the translation for a string using Qt translation API.
-
-        We implement this ourselves since we do not inherit QObject.
-
-        :param message: String for translation.
-        :type message: str, QString
-
-        :returns: Translated version of message.
-        :rtype: QString
-        """
-        # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate("infra3D", message)
-
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
@@ -135,7 +122,8 @@ class Infra3d:
 
         # Start infra3D action
         self.start_infra3d_action = QAction(
-            QIcon("icons:infra3d.svg"), self.tr("Enable infra3D")
+            QIcon("icons:infra3d.svg"),
+            QCoreApplication.translate("infra3D", "Enable infra3D"),
         )
         self.start_infra3d_action.toggled.connect(self.start_infra3d)
         self.start_infra3d_action.setCheckable(True)
@@ -144,7 +132,7 @@ class Infra3d:
         # Set infra3D position action
         self.set_infra3d_position_action = QAction(
             QIcon("icons:infra3d_pin.svg"),
-            self.tr("Set infra3D position"),
+            QCoreApplication.translate("infra3D", "Set infra3D position"),
             self.iface.mainWindow(),
         )
         self.set_infra3d_position_action.triggered.connect(self.set_infra3d_position)
@@ -156,7 +144,7 @@ class Infra3d:
         # Zoom to marker action
         self.zoom_to_marker_action = QAction(
             QIcon("icons:infra3d_zoom.svg"),
-            self.tr("Zoom to marker"),
+            QCoreApplication.translate("infra3D", "Zoom to marker"),
             self.iface.mainWindow(),
         )
         self.zoom_to_marker_action.setEnabled(False)
@@ -166,7 +154,7 @@ class Infra3d:
         self.infra3d_settings = Infra3DSettings(self.iface.mainWindow(), self.iface)
         self.show_settings_action = QAction(
             QIcon(":/images/themes/default/mActionOptions.svg"),
-            self.tr("Settings"),
+            QCoreApplication.translate("infra3D", "Settings"),
             self.iface.mainWindow(),
         )
         self.show_settings_action.triggered.connect(self.infra3d_settings.show)
@@ -214,7 +202,10 @@ class Infra3d:
         except Exception as e:
             self.iface.messageBar().pushMessage(
                 "infra3D",
-                self.tr("Error while synchronizing network: ") + str(e),
+                QCoreApplication.translate(
+                    "infra3D", "Error while synchronizing network: "
+                )
+                + str(e),
                 Qgis.MessageLevel.Warning,
                 5,
             )
@@ -223,7 +214,7 @@ class Infra3d:
         """Removes the plugin menu item and icon from QGIS GUI."""
 
         for action in self.actions:
-            self.iface.removePluginWebMenu(self.tr("infra3D"), action)
+            self.iface.removePluginWebMenu("infra3D", action)
             self.iface.removeToolBarIcon(action)
         # remove the toolbar
         del self.toolbar
@@ -298,7 +289,9 @@ class Infra3d:
         if len(missing_configurations) > 0:
             self.iface.messageBar().pushMessage(
                 "infra3D",
-                self.tr("The following settings are not set: ")
+                QCoreApplication.translate(
+                    "infra3D", "The following settings are not set: "
+                )
                 + ", ".join(missing_configurations),
                 Qgis.MessageLevel.Critical,  # type: ignore
                 5,
@@ -317,7 +310,10 @@ class Infra3d:
             QGuiApplication.restoreOverrideCursor()
             self.iface.messageBar().pushMessage(
                 "infra3D",
-                self.tr("infra3D server did not start correctly. Please restart QGIS"),
+                QCoreApplication.translate(
+                    "infra3D",
+                    "infra3D server did not start correctly. Please restart QGIS",
+                ),
                 Qgis.MessageLevel.Critical,  # type: ignore
                 5,
             )

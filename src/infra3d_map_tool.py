@@ -29,6 +29,7 @@ from qgis.gui import (
     QgsMapMouseEvent,
     QgsSnapIndicator,
 )
+from qgis.PyQt.QtCore import QCoreApplication
 from typing import Callable
 
 from .infra3d_client import Infra3dClient
@@ -86,7 +87,9 @@ class Infra3dMapTool(QgsMapToolEmitPoint):
         else:
             self.iface.messageBar().pushMessage(
                 "Infra3D",
-                self.tr("No image found for the selected position."),
+                QCoreApplication.translate(
+                    "infra3D", "No image found for the selected position."
+                ),
                 Qgis.MessageLevel.Critical,  # type: ignore
                 5,
             )

@@ -165,8 +165,8 @@ qgis
 Generate tranlation files:
 
 ```bash
-pylupdate5 -noobsolete *.py ui/* -ts i18n/Infra3d_de.ts
-lrelease-qt5 i18n/Infra3d_de.ts -qm i18n/Infra3d_de.qm
+lupdate src/infra3d_client.py src/infra3d_layer_utils.py src/infra3d_map_tool.py src/infra3d_plugin.py src/infra3d_settings_loarule.py src/infra3d_settings.py ui/settings.ui -ts i18n/infra3d_de.ts
+lrelease i18n/infra3d_de.ts -qm i18n/infra3d_de.qm
 ```
 
 ## 6. License

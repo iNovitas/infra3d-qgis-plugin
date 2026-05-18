@@ -27,7 +27,7 @@
 import uuid
 import socketio
 from typing import Callable
-from qgis.PyQt.QtCore import pyqtSignal, QObject
+from qgis.PyQt.QtCore import pyqtSignal, QObject, QCoreApplication
 from qgis.PyQt.QtWidgets import QMessageBox
 
 
@@ -72,8 +72,10 @@ class Infra3dClient(QObject):
         except socketio.exceptions.ConnectionError as e:
             QMessageBox.critical(
                 None,  # type: ignore
-                self.tr("infra3D: Connection error"),
-                self.tr("Could not connect to the socketio server!"),
+                QCoreApplication.translate("infra3D", "Connection error"),
+                QCoreApplication.translate(
+                    "infra3D", "Could not connect to the socketio server!"
+                ),
             )
             self.connection_failed.emit()
             return False

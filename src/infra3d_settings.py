@@ -28,7 +28,13 @@ from .infra3d_settings_loarule import LoaRule, LoaRuleTableModel
 from qgis.core import Qgis, QgsApplication
 from qgis.PyQt import uic
 from qgis.PyQt.QtWidgets import QMainWindow, QDialog, QDialogButtonBox, QMessageBox
-from qgis.PyQt.QtCore import QSettings, QModelIndex, Qt, QSortFilterProxyModel
+from qgis.PyQt.QtCore import (
+    QSettings,
+    QModelIndex,
+    Qt,
+    QSortFilterProxyModel,
+    QCoreApplication,
+)
 
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "ui/settings.ui")
@@ -51,9 +57,15 @@ class Infra3DSettings(QDialog, FORM_CLASS):
     def __init__(self, parent: QMainWindow, iface):
         super(Infra3DSettings, self).__init__(parent)
 
-        self.default_current_position_layer = self.tr("Current Position")
-        self.default_network_layer_lines = self.tr("Network - Lines")
-        self.default_network_layer_hexes = self.tr("Network - Hexes")
+        self.default_current_position_layer = QCoreApplication.translate(
+            "infra3D", "Current Position"
+        )
+        self.default_network_layer_lines = QCoreApplication.translate(
+            "infra3D", "Network - Lines"
+        )
+        self.default_network_layer_hexes = QCoreApplication.translate(
+            "infra3D", "Network - Hexes"
+        )
 
         self.setupUi(self)
         self.settings = QSettings()
@@ -154,8 +166,10 @@ class Infra3DSettings(QDialog, FORM_CLASS):
         ):
             QMessageBox.warning(
                 None,  # type: ignore
-                self.tr("Infra3D: Server port changed"),
-                self.tr("Restart QGIS for the port change to take effect!"),
+                QCoreApplication.translate("infra3D", "Server port changed"),
+                QCoreApplication.translate(
+                    "infra3D", "Restart QGIS for the port change to take effect!"
+                ),
             )
 
         # Infra3D credentials
@@ -262,9 +276,8 @@ class Infra3DSettings(QDialog, FORM_CLASS):
         else:
             self.iface.messageBar().pushMessage(
                 "infra3D",
-                "Page not reseted: Unknown page {}".format(
-                    self.tabWidget.currentIndex()
-                ),
+                QCoreApplication.translate("infra3D", "Page not reseted: Unknown page ")
+                + str(self.tabWidget.currentIndex()),
                 Qgis.MessageLevel.Critical,
                 5,
             )

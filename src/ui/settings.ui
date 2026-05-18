@@ -52,7 +52,7 @@
              <string>Start Project UID</string>
             </property>
             <property name="toolTip">
-             <string>The Project UID can be found in the Standalone Application in the URL</string>
+             <string>The Project UID can be found in the URL of the Standalone Application</string>
             </property>
            </widget>
           </item>    

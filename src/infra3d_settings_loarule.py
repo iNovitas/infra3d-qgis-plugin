@@ -1,4 +1,4 @@
-from qgis.PyQt.QtCore import Qt, QAbstractTableModel, QModelIndex
+from qgis.PyQt.QtCore import Qt, QAbstractTableModel, QModelIndex, QCoreApplication
 
 
 class LoaRule:
@@ -12,10 +12,10 @@ class LoaRule:
 class LoaRuleTableModel(QAbstractTableModel):
     def __init__(self, rules=None, parent=None):
         self.headers = [
-            self.tr("Type"),
-            self.tr("Level"),
-            self.tr("Min Scale"),
-            self.tr("Max Scale"),
+            QCoreApplication.translate("infra3D", "Type"),
+            QCoreApplication.translate("infra3D", "Level"),
+            QCoreApplication.translate("infra3D", "Min Scale"),
+            QCoreApplication.translate("infra3D", "Max Scale"),
         ]
         super().__init__(parent)
         self.rules = rules or []
