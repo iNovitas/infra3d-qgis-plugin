@@ -21,7 +21,7 @@ tags=python, infra3D, StreetView Service, mobile mapping, road, rail
 
 homepage=https://www.inovitas.ch/
 category=Web
-icon=resources/infra3d.svg
+icon=src/resources/infra3d.svg
 # experimental flag
 experimental=False
 

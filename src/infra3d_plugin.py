@@ -75,7 +75,9 @@ class Infra3d:
         self.plugin_dir = os.path.join(os.path.dirname(__file__), "..")
 
         # Init the icons path
-        QDir.addSearchPath("icons", os.path.join(self.plugin_dir, "resources"))
+        QDir.addSearchPath(
+            "icons", os.path.join(os.path.dirname(__file__), "resources")
+        )
 
         # initialize locale
         locale = QSettings().value("locale/userLocale", "en")[0:2]
