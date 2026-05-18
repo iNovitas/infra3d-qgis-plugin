@@ -1,4 +1,4 @@
-name: Package Infra3d plugin with dependencies
+name: Package infra3D plugin with dependencies
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
           pip wheel -r requirements.txt -w dependencies/wheels
           pip install --no-index --find-links dependencies/wheels/ --target dependencies/site-packages -r requirements.txt
           mkdir Infra3DPlugin
-          mv dependencies/ i18n/ src/ __init__.py metadata.txt Infra3DPlugin/
+          rsync -av --exclude='__pycache__' --exclude='*.pyc' dependencies/ i18n/ src/ __init__.py metadata.txt Infra3DPlugin/
           zip -r Infra3DPlugin.zip Infra3DPlugin/
 
       - name: Create release
