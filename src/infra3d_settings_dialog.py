@@ -93,7 +93,7 @@ class Infra3DSettingsDialog(QDialog, FORM_CLASS):
         # Infra3D credentials
         self.lineEdit_tenantIdentifier.setText(self.settings.tenant_identifier)
         self.lineEdit_startProjectUID.setText(self.settings.start_project_uid)
-        # SocketIO server
+        # Local server
         self.spinBox_serverPort.setValue(int(self.settings.server_port))
 
         self.lineEdit_layerGroup.setText(self.settings.layer_group)
@@ -107,20 +107,11 @@ class Infra3DSettingsDialog(QDialog, FORM_CLASS):
         ]
 
     def save_settings(self):
-        if self.spinBox_serverPort.value() != int(self.settings.server_port):
-            QMessageBox.warning(
-                None,  # type: ignore
-                QCoreApplication.translate("infra3D", "Server port changed"),
-                QCoreApplication.translate(
-                    "infra3D", "Restart QGIS for the port change to take effect!"
-                ),
-            )
-
         # Infra3D credentials
         self.settings.tenant_identifier = self.lineEdit_tenantIdentifier.text()
         self.settings.start_project_uid = self.lineEdit_startProjectUID.text()
 
-        # SocketIO server
+        # Local server
         self.settings.server_port = self.spinBox_serverPort.value()
 
         self.settings.layer_group = self.lineEdit_layerGroup.text()

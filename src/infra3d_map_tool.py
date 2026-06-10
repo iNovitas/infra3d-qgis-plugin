@@ -31,6 +31,7 @@ from qgis.gui import (
 )
 from qgis.PyQt.QtCore import QCoreApplication
 from typing import Callable
+from pyproj import Transformer
 
 from .infra3d_client import Infra3dClient
 
@@ -72,18 +73,18 @@ class Infra3dMapTool(QgsMapToolEmitPoint):
             self.snapper.setMatch(self.locator.nearestEdge(mouseEvent.mapPoint(), 100))
 
     def set_infra3d_position(self, point: QgsPointXY):
-        """Call the remote function `lookAt2DPosition` and set the position
+        """Call the remote function `moveTo2DPosition` and set the position
         in the Infra3D application to the selected point in QGIS.
 
         """
         self.callback_start_infra3d()
 
         if not self.locator:
-            self.infra3d_client.lookAt2DPosition(point.x(), point.y())
+            self.infra3d_client.moveTo2DPosition(*self._to_wgs84(point))
         # Get point from snapper
         elif self.snapper.match().isValid():
             point = self.snapper.match().point()
-            self.infra3d_client.lookAt2DPosition(point.x(), point.y())
+            self.infra3d_client.moveTo2DPosition(*self._to_wgs84(point))
         else:
             self.iface.messageBar().pushMessage(
                 "Infra3D",
@@ -95,3 +96,10 @@ class Infra3dMapTool(QgsMapToolEmitPoint):
             )
 
         self.snapper.setMatch(QgsPointLocator.Match())
+
+    def _to_wgs84(self, point: QgsPointXY) -> tuple[float, float]:
+        """Convert a point from the current map CRS to WGS84."""
+        source_crs = self.map_canvas.mapSettings().destinationCrs()
+        transformer = Transformer.from_crs(source_crs.authid(), "EPSG:4326", always_xy=True)
+        longitude, latitude = transformer.transform(point.x(), point.y())
+        return longitude, latitude

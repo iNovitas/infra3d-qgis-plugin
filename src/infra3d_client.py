@@ -24,11 +24,12 @@
 
 # -*- coding: utf-8 -*-
 
+import json
 import uuid
-import socketio
-from typing import Callable
+
 from qgis.PyQt.QtCore import pyqtSignal, QObject, QCoreApplication
 from qgis.PyQt.QtWidgets import QMessageBox
+from qgis.core import QgsMessageLog
 
 
 class Infra3dClient(QObject):
@@ -36,56 +37,45 @@ class Infra3dClient(QObject):
     to the infra3D application, that is running in the browser.
     """
 
-    # This pyqtSignal is used to signal that
-    # the Infra3D web app was loaded
     webapp_loaded = pyqtSignal(dict)
-    # This pyqtSignal is used to signal that
-    # the Infra3D web app was initialized by calling
-    # the function "initInfra3d" (see Infra3dClient.init)
     webapp_initialized = pyqtSignal(dict)
-    # This pyqtSignal is used to signal that
-    # the position in the Infra3D web app changed
     position_changed = pyqtSignal(dict)
     azimuth_changed = pyqtSignal(dict)
     connection_failed = pyqtSignal(dict)
-
-    # signal for when new network is received
     network_received = pyqtSignal(dict)
 
-    def __init__(self, socketio_server_url):
+    def __init__(self, local_server):
         super(Infra3dClient, self).__init__()
-        self.socketio_server_url = socketio_server_url
-        self.sio = socketio.Client()
+        self.local_server = local_server
+        self._connected = False
+        self._signal_connected = False
 
     def connect(self) -> bool:
-        """Try to connect to the socketio server and return
-        whether the connection was successfull or not.
-
-        Returns:
-            bool: True, if the connection could be made.
-        """
-        if self.sio.connected is True:
+        """Try to connect to the local server and subscribe to browser events."""
+        if self._connected is True:
             return True
 
-        try:
-            self.sio.connect(self.socketio_server_url)
-        except socketio.exceptions.ConnectionError as e:
+        if self.local_server.running is False or not self.local_server.websocket_address():
             QMessageBox.critical(
                 None,  # type: ignore
                 QCoreApplication.translate("infra3D", "Connection error"),
                 QCoreApplication.translate(
-                    "infra3D", "Could not connect to the socketio server!"
+                    "infra3D", "Could not connect to the local websocket bridge!"
                 ),
             )
             self.connection_failed.emit({})
             return False
-        self.__listen_on_remote_event("loaded", self.webapp_loaded.emit)
+
+        if self._signal_connected is False:
+            self.local_server.websocket_message_received.connect(
+                self._handle_websocket_message
+            )
+            self._signal_connected = True
+
+        self._connected = True
         return True
 
     def init(self, tenant_identifier: str = "", start_project_uid: str = ""):
-        """Call the JS method `initInfra3d` to start the initialization
-        of Infra3D application in the browser.
-        """
         self.__call_remote_method(
             "initInfra3d",
             {
@@ -93,15 +83,9 @@ class Infra3dClient(QObject):
                 "startProjectUid": start_project_uid,
             },
         )
-        self.__listen_on_remote_event("initialized", self.webapp_initialized.emit)
 
     def setOnPositionChanged(self):
-        """Listen on the remote event `positionChanged` that is emitted
-        whenever the Infra3D application in the browser changes the camera position.
-        Everytime the event is emitted, the QT signal positionChanged is emitted too.
-        """
-        self.__listen_on_remote_event("positionChanged", self.position_changed.emit)
-        self.__listen_on_remote_event("azimuthChanged", self.azimuth_changed.emit)
+        self.connect()
 
     def getNetwork(
         self,
@@ -113,26 +97,6 @@ class Infra3dClient(QObject):
         maxNorthing: float,
         epsg: int,
     ) -> None:
-        """
-        Call frontend method to retreive the road-network and listen to its response.
-
-        Parameters
-        ----------
-        level : str
-            The level of detail of the road network. Can be "routes", "routeLines" or "routeHexes"
-        loa : int
-            The level of accuracy of the road network. Can be 0, 1 or 2.
-        minEasting : float
-            Bounding Box coordinate of the left edge
-        maxEasting : float
-            Bounding Box coordinate of the right edge
-        minNorthing : float
-            Bounding Box coordinate of the lower edge
-        maxNorthing : float
-            Bounding Box coordinate of the upper edge
-        epsg : int
-            EPSG code for the coordinate system
-        """
         self.__call_remote_method(
             "getNetwork",
             {
@@ -145,61 +109,45 @@ class Infra3dClient(QObject):
                 "epsg": epsg,
             },
         )
-        self.__listen_on_remote_event("newNetwork", self.network_received.emit)
 
-    def lookAt2DPosition(self, easting: float, northing: float):
-        """Set the current position in the Infra3d application in the browser.
-
-        Args:
-            easting (float): Coordinate E
-            northing (float): Coordinate N
-        """
+    def moveTo2DPosition(self, easting: float, northing: float):
         self.__call_remote_method(
-            "lookAt2DPosition", {"easting": easting, "northing": northing}
+            "moveTo2DPosition", {"easting": easting, "northing": northing}
         )
 
     def __call_remote_method(self, method_name: str, args: dict):
-        """Helper method to call a remote method.
-        A remote method is a JS method that can be called via the socketio server.
-        To be able to call the JS method, the method has to be registered in the JS application
-        (applications.js in this case).
-
-        Args:
-            method_name (str): JS method name that to call
-            args (dict): Method arguments to pass
-        """
         self.connect()
         request = {"id": str(uuid.uuid1()), "method": method_name, "args": args}
 
         try:
-            self.sio.emit("rpcrequest", data=request)
-        except socketio.exceptions.BadNamespaceError:
-            # This exception only occurs when we are not connected to the server
-            # We ignore it here, because we already notify the user that a
-            # connection to the server could not be made
+            self.local_server.send_websocket_message(request)
+        except Exception:
             pass
 
-    def __listen_on_remote_event(self, event_name: str, handler: Callable):
-        """Helper method to listen on a remote event.
-        Events are handled with the publish-subscribe messaging pattern.
-        This function simply listens on specific events (`event_name`)
-        and calls their specified callback (`handler`).
-
-        Args:
-            event_name (str): Event name to listen to
-            handler (Callable): Callback to execute when the event was emitted
-        """
-        self.connect()
-        self.sio.on(event_name, handler=handler)
-
-    def __unlisten_on_remote_event(self, event_name: str):
-        """Helper method to unlisten on a remote event.
-
-        Args:
-            event_name (str): Event name to stop listening to
-        """
-        self.sio.off(event_name)
-
     def disconnect(self):
-        """Disconnect from the socketio server"""
-        self.sio.disconnect()
+        self._connected = False
+        if self._signal_connected:
+            try:
+                self.local_server.websocket_message_received.disconnect(
+                    self._handle_websocket_message
+                )
+            except TypeError:
+                pass
+            self._signal_connected = False
+
+    def _handle_websocket_message(self, payload: dict):
+        event_name = payload.get("event")
+        params = payload.get("params", {})
+
+        if event_name == "loaded":
+            self.webapp_loaded.emit(params)
+        elif event_name == "initialized":
+            self.webapp_initialized.emit(params)
+        elif event_name == "positionChanged":
+            self.position_changed.emit(params)
+        elif event_name == "azimuthChanged":
+            self.azimuth_changed.emit(params)
+        elif event_name == "newNetwork":
+            self.network_received.emit(params)
+        elif event_name == "rpcresponse":
+            pass

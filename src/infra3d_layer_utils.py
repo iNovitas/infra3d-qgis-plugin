@@ -10,6 +10,7 @@ from qgis.core import (
     QgsFeature,
     QgsGeometry,
     QgsPointXY,
+    QgsMessageLog,
 )
 from qgis.PyQt.QtCore import QObject, QCoreApplication
 
@@ -37,8 +38,10 @@ class Infra3DLayerUtils(QObject):
         root = project.layerTreeRoot()
 
         # Check if group already exists by name
-        existing_group = root.findGroup(group_name)
-        if existing_group:
+        existing_groups = root.findGroups()
+        existing_group = next((g for g in existing_groups if g.name() == group_name), None)
+
+        if existing_group is not None:
             self.layer_group = existing_group
         else:
             self.layer_group = root.insertGroup(0, group_name)
@@ -57,35 +60,36 @@ class Infra3DLayerUtils(QObject):
 
     def remove_layers(self):
         if self.network_layer_lines_id:
-            QgsProject.instance().removeMapLayer(self.network_layer_lines_id)
+            try:
+                QgsProject.instance().removeMapLayer(self.network_layer_lines_id)
+            except Exception:
+                pass
             self.network_layer_lines_id = None
-        else:
-            layer = QgsProject.instance().mapLayersByName(
-                self.settings.network_layer_name_lines
-            )
-            if layer:
-                for lyr in layer:
-                    QgsProject.instance().removeMapLayer(lyr.id())
 
         if self.network_layer_hexes_id:
-            QgsProject.instance().removeMapLayer(self.network_layer_hexes_id)
+            try:
+                QgsProject.instance().removeMapLayer(self.network_layer_hexes_id)
+            except Exception:
+                pass
             self.network_layer_hexes_id = None
-        else:
-            layer = QgsProject.instance().mapLayersByName(
-                self.settings.network_layer_name_hexes
-            )
-            if layer:
-                for lyr in layer:
-                    QgsProject.instance().removeMapLayer(lyr.id())
 
-        if self.layer_group:
-            QgsProject.instance().layerTreeRoot().removeChildNode(self.layer_group)
+        if self.marker_layer_id:
+            try:
+                QgsProject.instance().removeMapLayer(self.marker_layer_id)
+            except Exception:
+                pass
+            self.marker_layer_id = None
+
+        if self.layer_group is not None:
+            try:
+                if len(self.layer_group.findLayerIds()) == 0:
+                    QgsProject.instance().layerTreeRoot().removeChildNode(self.layer_group)
+            except Exception:
+                pass
+            
             self.layer_group = None
-        else:
-            layer = QgsProject.instance().mapLayersByName(self.settings.layer_group)
-            if layer:
-                for lyr in layer:
-                    QgsProject.instance().removeMapLayer(lyr.id())
+        
+        self.iface.mapCanvas().refresh()
 
     def _init_marker_layer(self):
         layer_name = self.settings.current_position_layer

@@ -2,11 +2,21 @@
 name=infra3D plugin
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
-description=This plugin is an integration of the infra3D application with QGIS
+description=Integrates the infra3D web application into QGIS (3.x/4.x) with synchronized visualization and navigation.
 version=1.0.0
 author=iNovitas AG
 email=support@inovitas.ch
-about=This plugin is an integration of the infra3D application with QGIS
+about=Features:
+    - Access and switch infra3D projects and campaigns
+    - Split-screen view (infra3D / QGIS)
+    - Synchronized positioning and navigation
+    - Authentication with infra3D
+    
+    Requirements:
+    - Valid infra3D license
+    - 3rd System Usage licensed
+    - infra3D NextGen tenant
+    - infra3D NextGen personal user accounts (SSO optional)
 
 tracker=https://inovitas.atlassian.net/servicedesk/customer/portal/1
 repository=https://github.com/iNovitas/infra3d-qgis-plugin/
