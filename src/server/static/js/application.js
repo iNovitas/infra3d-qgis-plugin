@@ -1,7 +1,9 @@
-class RPCClient {
-  constructor(socket) {
-    this.socket = socket;
+class WebSocketBridge {
+  constructor(url) {
+    this.url = url;
     this.methods = {};
+    this.pending = [];
+    this.socket = null;
   }
   register(name, method) {
     this.methods[name] = method;
@@ -10,50 +12,56 @@ class RPCClient {
     delete this.methods[name];
   }
   start() {
-    // TODO: Is there a better way for this?
-    // We create a local variable called self, so we can access the
-    // `this` variable within the nested function.
-    // Otherwise the `this` variable referes to the `start` function,
-    // which is also an object in JS
-    let self = this;
-    this.socket.on("rpcrequest", function (params) {
-      let success = true;
-      let result = null;
-      try {
-        // Try to execute the method that was defined in
-        // rpcrequest
-        result = self.methods[params.method](params.args);
-      } catch (error) {
-        success = false;
-        result = error;
+    this.socket = new WebSocket(this.url);
+    this.socket.addEventListener("open", () => {
+      while (this.pending.length > 0) {
+        this.socket.send(JSON.stringify(this.pending.shift()));
       }
-      self.socket.emit("rpcresponse", {
-        success: success,
-        result: result,
-        id: params.id,
-      });
+      this.emit_event("loaded", {});
     });
-  }
-}
+    this.socket.addEventListener("message", async (message) => {
+      let payload;
+      try {
+        payload = JSON.parse(message.data);
+      } catch (error) {
+        console.error("Invalid websocket payload", error);
+        return;
+      }
 
-class PubSubClient {
-  constructor(socket) {
-    this.socket = socket;
-    this.events = {};
+      if (payload.method) {
+        const method = this.methods[payload.method];
+        if (!method) {
+          console.error(`Unknown RPC method: ${payload.method}`);
+          return;
+        }
 
-    socket.on("pubsub", function (event_trigger) {
-      if (this.events[event_trigger.event])
-        this.events[event_trigger.event](event_trigger.params);
+        try {
+          await method(payload.args);
+        } catch (error) {
+          console.error("RPC method failed", error);
+        }
+      }
     });
-  }
-  on_event(event, method) {
-    this.events[event] = method;
+    this.socket.addEventListener("close", () => {
+      console.warn("infra3D websocket closed");
+    });
+    this.socket.addEventListener("error", (error) => {
+      console.error("infra3D websocket error", error);
+    });
   }
   emit_event(event, params) {
-    this.socket.emit("pubsub", {
+    this.send({
       event: event,
       params: params,
     });
+  }
+  send(payload) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(payload));
+      return;
+    }
+
+    this.pending.push(payload);
   }
 }
 
@@ -61,21 +69,18 @@ window.infra3D_manager = null;
 window.infra3D_viewer = null;
 
 /**
- * Main entry point. Registeres flask server and events in the API.
+ * Main entry point. Registers the local server client and viewer events.
  */
 function main() {
-  // io --> https://socket.io/docs/v4/client-api/
-  const socket = io(
-    location.protocol + "//" + document.domain + ":" + location.port,
-  );
-  const rpcclient = new RPCClient(socket);
-  rpcclient.register("initInfra3d", initInfra3d);
-  rpcclient.register("lookAt2DPosition", moveTo2DPosition);
-  rpcclient.register("getNetwork", getNetwork);
-  rpcclient.start();
+  const bridge = new WebSocketBridge(window.INFRA3D_WEBSOCKET_URL);
+  bridge.register("initInfra3d", initInfra3d);
+  bridge.register("moveTo2DPosition", moveTo2DPosition);
+  bridge.register("getNetwork", getNetwork);
+  bridge.start();
 
-  const pubsubClient = new PubSubClient(socket);
-  pubsubClient.emit_event("loaded", {});
+  const pubsubClient = bridge;
+
+  let start_position = null;
 
   /**
    * Retrieves an access token for the given domain and client ID.
@@ -138,10 +143,6 @@ function main() {
       );
       return mytokenresponse.access_token;
     }
-  }
-
-  function delay(time) {
-    return new Promise((resolve) => setTimeout(resolve, time));
   }
 
   /**
@@ -262,9 +263,6 @@ function main() {
    */
   async function loadViewer(project_uid) {
     toggleProjects(true); // close the project selection regardless of current state
-    await new Promise((resolve) =>
-      requestAnimationFrame(() => setTimeout(resolve, 150)),
-    ); // wait for projects to be toggled
 
     // init viewer
     window.infra3D_manager.on("viewerset", (_viewer) => {
@@ -288,6 +286,7 @@ function main() {
 
     window.infra3D_viewer = await window.infra3D_manager.initViewer({
       project_uid: project_uid,
+      start_position: start_position ? start_position : undefined,
       show_toolbar: true,
       show_topbar: true,
       show_cockpit: true,
@@ -467,24 +466,6 @@ function main() {
   }
 
   /**
-   * Makes the infra3d viewer to look at a coordinate.
-   * @param {object} params - object containing parameters for the method.
-   * @param {number} params.easting - easting coordinate in LV95.
-   * @param {number} params.northing - northing coordinate in LV95.
-   * @return {void}
-   */
-  function lookAt2DPosition(params) {
-    window.infra3D_viewer.lookAtPosition(
-      params.easting,
-      params.northing,
-      undefined,
-      undefined,
-      3857,
-    );
-    return 0;
-  }
-
-  /**
    * Makes the infra3d viewer to move to a coordinate
    * @param {object} params
    * @param {number} params.easting easting coordinate in LV95
@@ -497,7 +478,7 @@ function main() {
       params.northing,
       undefined,
       undefined,
-      3857,
+      4326,
     );
     return 0;
   }

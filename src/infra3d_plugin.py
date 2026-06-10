@@ -24,14 +24,10 @@
 
 from threading import Thread
 import os.path
-import sys
+import time
 from pyproj import Transformer
 import json
-
-# Add prepackaged dependencies to PYTHONPATH so the plugin can use them
-sys.path.append(
-    os.path.join(os.path.dirname(__file__), "../dependencies/site-packages")
-)
+import math
 
 from qgis.gui import QgisInterface, QgsMapToolPan
 from qgis.core import Qgis, QgsPointXY, QgsRectangle
@@ -54,7 +50,7 @@ from .infra3d_settings import Infra3dSettings
 from .infra3d_client import Infra3dClient
 from .infra3d_map_tool import Infra3dMapTool
 from .infra3d_layer_utils import Infra3DLayerUtils
-from .server.socketio_server import SocketIOServer
+from .server.local_server import LocalServer
 
 
 class Infra3d:
@@ -96,12 +92,11 @@ class Infra3d:
         self.toolbar.setObjectName("infra3D")
         self.settings = Infra3dSettings()
 
-        # Start socketio server
-        self.socketio_server = SocketIOServer()
-        self.start_socketio_server(self.settings.server_port)
+        # Prepare local HTTP server
+        self.local_server = LocalServer()
 
         # Initialize Infra3D client
-        self.infra3d_client = Infra3dClient(self.socketio_server_address())
+        self.infra3d_client = Infra3dClient(self.local_server)
 
         # Initialize map tool
         self.infra3d_map_tool = Infra3dMapTool(
@@ -113,6 +108,8 @@ class Infra3d:
         self.panTool = QgsMapToolPan(self.iface.mapCanvas())
 
         self.layer_utils = Infra3DLayerUtils(self.iface, self.settings)
+
+        self.first_position_received = False
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
@@ -216,6 +213,9 @@ class Infra3d:
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
 
+        self.infra3d_client.disconnect()
+        self.local_server.stop()
+
         for action in self.actions:
             self.iface.removePluginWebMenu("infra3D", action)
             self.iface.removeToolBarIcon(action)
@@ -232,9 +232,17 @@ class Infra3d:
             enable/disable
         """
         if checked:
-            self.open_browser()
+            if self.local_server.running is False:
+                self.start_local_server(self.settings.server_port)
+
+            if self.wait_for_local_server() is False:
+                self.show_settings_action.setEnabled(True)
+                self.start_infra3d_action.setChecked(False)
+                return
 
             self.connect()
+
+            self.open_browser()
 
             self.show_settings_action.setEnabled(False)
 
@@ -242,6 +250,8 @@ class Infra3d:
 
         else:
             self.disconnect()
+            
+            self.local_server.stop()
 
             self.iface.mapCanvas().setMapTool(self.panTool)
 
@@ -308,8 +318,8 @@ class Infra3d:
         infra3D application via the `init` function.
         """
 
-        # Don't do anything if the socketio server is not running
-        if self.socketio_server.running is False:
+        # Don't do anything if the local server is not running
+        if self.local_server.running is False:
             QGuiApplication.restoreOverrideCursor()
             self.iface.messageBar().pushMessage(
                 "infra3D",
@@ -335,7 +345,7 @@ class Infra3d:
             return
 
         # Start browser
-        QDesktopServices.openUrl(QUrl(self.socketio_server_address()))
+        QDesktopServices.openUrl(QUrl(self.local_server_address()))
 
     def connect(self):
         """Connect the signals of the infra3D client with the respective slots
@@ -365,11 +375,13 @@ class Infra3d:
         """
         This function is called when the `webapp_initialized` signal is emitted.
         """
-        QGuiApplication.restoreOverrideCursor(),
-        self.infra3d_client.setOnPositionChanged(),
-        self.set_infra3d_position_action.setEnabled(True),
-        self.zoom_to_marker_action.setEnabled(True),
-        self.onExtentsChanged(),
+
+        self.first_position_received = False
+
+        QGuiApplication.restoreOverrideCursor()
+        self.infra3d_client.setOnPositionChanged()
+        self.set_infra3d_position_action.setEnabled(True)
+        self.zoom_to_marker_action.setEnabled(True)
 
     def _on_network_received(self, network: dict):
         """
@@ -405,6 +417,10 @@ class Infra3d:
 
         self.layer_utils.update_marker(position=point)
 
+        if self.first_position_received is False:
+            self.zoom_to_marker()
+            self.first_position_received = True
+
     def update_marker_orientation(self, azi: dict):
         """Update the orientation of the marker `self.infra3d_marker`.
 
@@ -418,25 +434,44 @@ class Infra3d:
         and refresh the map canvas
         """
 
+        zoom_level = 18
+        resolution = 40075016.686 / (2 ** (zoom_level + 8))
+        buffer = resolution * self.iface.mapCanvas().width() / 2  # in m
+
+        earth_radius = 6378137.0
+        buffer_y = (buffer / earth_radius) * (180.0 / math.pi)
+        buffer_x = buffer_y / max(math.cos(math.radians(self.layer_utils.marker_position.y())), 1e-12)
+
+        bl_point = QgsPointXY(
+            self.layer_utils.marker_position.x() - buffer_x,
+            self.layer_utils.marker_position.y() - buffer_y
+        )
+        tr_point = QgsPointXY(
+            self.layer_utils.marker_position.x() + buffer_x,
+            self.layer_utils.marker_position.y() + buffer_y
+        )
+
+        # Calculate the zoom window in map units first so it works for any CRS.
         epsg = self.iface.mapCanvas().mapSettings().destinationCrs().authid()
         point_transformer = Transformer.from_crs("EPSG:4326", epsg, always_xy=True)
 
-        transformed_point = point_transformer.transform(
-            self.layer_utils.marker_position.x(), self.layer_utils.marker_position.y()
-        )
+        transformed_bl_point = point_transformer.transform(bl_point.x(), bl_point.y())
+        transformed_tr_point = point_transformer.transform(tr_point.x(), tr_point.y())
+
 
         self.iface.mapCanvas().setExtent(
             QgsRectangle(
-                transformed_point[0],
-                transformed_point[1],
-                transformed_point[0],
-                transformed_point[1],
-            )
+                transformed_bl_point[0] - buffer_x,
+                transformed_bl_point[1] - buffer_y,
+                transformed_tr_point[0] + buffer_x,
+                transformed_tr_point[1] + buffer_y,
+            ),
+            True
         )
         self.iface.mapCanvas().refresh()
 
-    def start_socketio_server(self, port: int):
-        """Start the socketio server in a different thread
+    def start_local_server(self, port: int):
+        """Start the local server in a different thread
         so we don't block the QGIS application.
 
         Args:
@@ -444,13 +479,38 @@ class Infra3d:
         """
 
         def start_server():
-            self.socketio_server.start(port, debug=False)
+            self.local_server.start(port, debug=False)
 
-        self.socketio_thread = Thread(target=start_server, daemon=True)
-        self.socketio_thread.start()
+        if self.local_server.start_websocket(port + 1) is False:
+            self.local_server.started.set()
+            return
 
-    def socketio_server_address(self) -> str:
-        """Build the socketio server address
+        self.local_server_thread = Thread(target=start_server, daemon=True)
+        self.local_server_thread.start()
+
+    def wait_for_local_server(self, timeout: float = 5.0) -> bool:
+        """Wait until the local server has bound its port."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.local_server.started.is_set() and self.local_server.running:
+                return True
+            if self.local_server.started.is_set() and self.local_server.startup_error is not None:
+                break
+            time.sleep(0.05)
+
+        self.iface.messageBar().pushMessage(
+            "infra3D",
+            QCoreApplication.translate(
+                "infra3D",
+                "infra3D server did not start correctly. Please restart QGIS",
+            ),
+            Qgis.MessageLevel.Critical,  # type: ignore
+            5,
+        )
+        return False
+
+    def local_server_address(self) -> str:
+        """Build the local server address
 
         Returns:
             str: Server address

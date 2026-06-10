@@ -35,11 +35,6 @@
         <translation>Numéro de port du serveur</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings.ui" line="83"/>
-        <source>Port number which the local socketio server will bind to</source>
-        <translation>Numéro de port auquel le serveur Socket.io local se connectera.</translation>
-    </message>
-    <message>
         <location filename="../src/ui/settings.ui" line="102"/>
         <source>Layer Names</source>
         <translation>Noms des couches</translation>
@@ -88,9 +83,9 @@
         <translation>Erreur de connexion</translation>
     </message>
     <message>
-        <location filename="../src/infra3d_client.py" line="76"/>
-        <source>Could not connect to the socketio server!</source>
-        <translation>Impossible de se connecter au serveur Socket.io !</translation>
+        <location filename="../src/infra3d_client.py" line="64"/>
+        <source>Could not connect to the local websocket bridge!</source>
+        <translation>Impossible de se connecter au serveur Websocket local !</translation>
     </message>
     <message>
         <location filename="../src/infra3d_layer_utils.py" line="111"/>
@@ -201,11 +196,6 @@
         <location filename="../src/infra3d_settings.py" line="169"/>
         <source>Server port changed</source>
         <translation>Le port du serveur a été modifié</translation>
-    </message>
-    <message>
-        <location filename="../src/infra3d_settings.py" line="170"/>
-        <source>Restart QGIS for the port change to take effect!</source>
-        <translation>Redémarrez QGIS pour que le changement de port prenne effet !</translation>
     </message>
     <message>
         <location filename="../src/infra3d_settings.py" line="279"/>

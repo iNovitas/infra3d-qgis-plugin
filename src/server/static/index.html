@@ -2,24 +2,12 @@
 <html>
   <head>
     <title>infra3D QGIS Plugin</title>
-    <link
-      rel="icon"
-      href="{{ url_for('static', filename='favicon.svg') }}"
-      type="image/svg+xml"
-    />
+    <script>
+      window.INFRA3D_WEBSOCKET_URL = "__INFRA3D_WEBSOCKET_URL__";
+    </script>
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
     <!-- Styling of UI elements -->
-    <link
-      rel="stylesheet"
-      type="text/css"
-      href="{{ url_for('static', filename='css/style.css') }}"
-    />
-
-    <!-- Server communication -->
-    <script
-      type="text/javascript"
-      charset="utf-8"
-      src="{{ url_for('static', filename='js/socket.io.min.js') }}"
-    ></script>
+    <link rel="stylesheet" type="text/css" href="/static/css/style.css" />
 
     <!-- Get latest infra3d API from server -->
     <script
@@ -29,10 +17,7 @@
     ></script>
 
     <!-- Main JS interaction with plugin -->
-    <script
-      type="text/javascript"
-      src="{{ url_for('static', filename='js/application.js') }}"
-    ></script>
+    <script type="text/javascript" src="/static/js/application.js"></script>
   </head>
   <body>
     <div id="app">
@@ -103,7 +88,7 @@
         <div id="projectPlaceholder">
           <img
             id="logo"
-            src="{{ url_for('static', filename='assets/search.webp') }}"
+            src="/static/assets/search.webp"
             alt="Placeholder image to indicate that no project is currently open."
           />
           <p data-i18n="projectPlaceholderText">
