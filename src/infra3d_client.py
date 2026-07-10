@@ -29,7 +29,6 @@ import uuid
 
 from qgis.PyQt.QtCore import pyqtSignal, QObject, QCoreApplication
 from qgis.PyQt.QtWidgets import QMessageBox
-from qgis.core import QgsMessageLog
 
 
 class Infra3dClient(QObject):

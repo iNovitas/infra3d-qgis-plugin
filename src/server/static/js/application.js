@@ -182,6 +182,8 @@ function main() {
 
       hideLoading();
     } catch ({ error, message }) {
+      console.error("Error initializing Infra3D API:", error, message);
+      hideLoading();
       loginError(error, message);
     }
   }
@@ -202,16 +204,30 @@ function main() {
    * @param {string} message - The error message to be displayed.
    */
   function loginError(error, message) {
-    const container = document.getElementById("projectContainer");
-    container.innerHTML = "";
+    const content = document.getElementById("content");
+    content.innerHTML = "";
 
-    const msg = document.createElement("button");
-    msg.id = "error";
-    msg.innerHTML = `
-        <button id="logout-button" class="text">${message}.\n\n Please log out and try another login.</button>
-        `;
-    container.appendChild(msg);
-    msg.addEventListener("click", (e) => logout());
+    const div1 = document.createElement("div");
+    const div2 = document.createElement("div");
+    div1.id = "errorContainer";
+    div2.id = "errorContent";
+    div2.innerHTML = `
+      <h1 data-i18n="loginErrorTitle">Login Error</h1>    
+      <p class="text" data-i18n="loginErrorMessage">An error occurred during login. Please log out and try another login.</p>
+      <p class="text">Details: ${message}</p>
+    `;
+
+    const button = document.createElement("button");
+    button.className = "button";
+    button.textContent = "Log out";
+    button.setAttribute("data-i18n", "logoutButtonText");
+    button.addEventListener("click", logout);
+    div2.appendChild(button);
+
+    div1.appendChild(div2);
+    content.appendChild(div1);
+
+    translate();
   }
 
   /**
@@ -482,6 +498,58 @@ function main() {
     );
     return 0;
   }
-}
 
-main();
+  function translate() {
+    const translations = {
+      de: {
+        projectsTitle: "Projekte",
+        projectPlaceholderText:
+          "Bitte wählen Sie ein Projekt aus der Seitenleiste, um es zu laden.",
+        loginErrorTitle: "Anmeldefehler",
+        loginErrorMessage:
+          "Beim Anmelden ist ein Fehler aufgetreten. Bitte melden Sie sich ab und versuchen Sie eine andere Anmeldung.",
+        logoutButtonText: "Abmelden",
+      },
+      fr: {
+        projectsTitle: "Projets",
+        projectPlaceholderText:
+          "Veuillez sélectionner un projet dans la barre latérale pour le charger.",
+        loginErrorTitle: "Erreur de connexion",
+        loginErrorMessage:
+          "Une erreur s'est produite lors de la connexion. Veuillez vous déconnecter et essayer une autre connexion.",
+        logoutButtonText: "Se déconnecter",
+      },
+      en: {
+        projectsTitle: "Projects",
+        projectPlaceholderText:
+          "Please select a project from the sidebar to load it.",
+        loginErrorTitle: "Login Error",
+        loginErrorMessage:
+          "An error occurred during login. Please log out and try another login.",
+        logoutButtonText: "Log out",
+      },
+    };
+
+    const defaultLocale = "en";
+    let locale = defaultLocale;
+
+    switch (navigator.language.toLowerCase().substring(0, 2)) {
+      case "de":
+        locale = "de";
+        break;
+      case "fr":
+        locale = "fr";
+        break;
+      default:
+        locale = defaultLocale;
+    }
+
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      const key = el.getAttribute("data-i18n");
+      if (translations[locale] && translations[locale][key]) {
+        el.textContent = translations[locale][key];
+      }
+    });
+  }
+  translate();
+}

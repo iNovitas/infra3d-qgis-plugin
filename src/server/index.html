@@ -19,7 +19,7 @@
     <!-- Main JS interaction with plugin -->
     <script type="text/javascript" src="/static/js/application.js"></script>
   </head>
-  <body>
+  <body onload="main()">
     <div id="app">
       <div id="loadingOverlay">
         <svg
@@ -60,9 +60,9 @@
       <!-- Sidebar navigation to quickly change projects -->
       <aside id="sidebar">
         <div id="sidebarInner">
-          <p id="sidebarHeader" class="title" data-i18n="projectsTitle">
-            Projects
-          </p>
+          <div id="sidebarHeader">
+            <h1 data-i18n="projectsTitle">Projects</h1>
+          </div>
 
           <!-- Project cards are placed in a container -->
           <div id="projectContainer"></div>
@@ -91,7 +91,11 @@
             src="/static/assets/search.webp"
             alt="Placeholder image to indicate that no project is currently open."
           />
-          <p data-i18n="projectPlaceholderText">
+          <p
+            data-i18n="projectPlaceholderText"
+            class="text"
+            style="padding: 0 8px"
+          >
             Please select a project from the sidebar to load it.
           </p>
         </div>
@@ -100,46 +104,4 @@
       </main>
     </div>
   </body>
-  <script>
-    (function () {
-      const translations = {
-        de: {
-          projectsTitle: "Projekte",
-          projectPlaceholderText:
-            "Bitte wählen Sie ein Projekt aus der Seitenleiste, um es zu laden.",
-        },
-        fr: {
-          projectsTitle: "Projets",
-          projectPlaceholderText:
-            "Veuillez sélectionner un projet dans la barre latérale pour le charger.",
-        },
-        en: {
-          projectsTitle: "Projects",
-          projectPlaceholderText:
-            "Please select a project from the sidebar to load it.",
-        },
-      };
-
-      const defaultLocale = "en";
-      let locale = defaultLocale;
-
-      switch (navigator.language.toLowerCase().substring(0, 2)) {
-        case "de":
-          locale = "de";
-          break;
-        case "fr":
-          locale = "fr";
-          break;
-        default:
-          locale = defaultLocale;
-      }
-
-      document.querySelectorAll("[data-i18n]").forEach((el) => {
-        const key = el.getAttribute("data-i18n");
-        if (translations[locale] && translations[locale][key]) {
-          el.textContent = translations[locale][key];
-        }
-      });
-    })();
-  </script>
 </html>
