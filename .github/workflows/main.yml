@@ -11,6 +11,11 @@ jobs:
     steps:
       - uses: actions/checkout@master
 
+      - name: Check formatting and linting
+        run: |
+          python -m pip install --upgrade pip ruff
+          ruff check .
+
       - run: |
           mkdir Infra3DPlugin
           rsync -av --exclude='__pycache__/' --exclude='*.pyc' i18n src __init__.py metadata.txt LICENSE CHANGELOG.md README.md Infra3DPlugin/
