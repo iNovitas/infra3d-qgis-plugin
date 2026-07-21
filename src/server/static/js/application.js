@@ -1,9 +1,10 @@
 class WebSocketBridge {
-  constructor(url) {
+  constructor(url, handlers = {}) {
     this.url = url;
     this.methods = {};
     this.pending = [];
     this.socket = null;
+    this.handlers = handlers;
   }
   register(name, method) {
     this.methods[name] = method;
@@ -43,8 +44,11 @@ class WebSocketBridge {
         }
       }
     });
-    this.socket.addEventListener("close", () => {
+    this.socket.addEventListener("close", (event) => {
       console.warn("infra3D websocket closed");
+      if (this.handlers.close) {
+        this.handlers.close(event);
+      }
     });
     this.socket.addEventListener("error", (error) => {
       console.error("infra3D websocket error", error);
@@ -74,7 +78,37 @@ window.infra3D_non_migrated_network_loaded = false;
  * Main entry point. Registers the local server client and viewer events.
  */
 function main() {
-  const bridge = new WebSocketBridge(window.INFRA3D_WEBSOCKET_URL);
+  function hideLoading() {
+    document.getElementById("loadingOverlay").classList.remove("active");
+  }
+
+  function showServerStoppedOverlay() {
+    const overlay = document.getElementById("shutdownOverlay");
+    const app = document.getElementById("app");
+
+    if (app) {
+      app.classList.add("shutdown");
+    }
+
+    if (overlay) {
+      overlay.classList.add("active");
+    }
+
+    hideLoading();
+    toggleProjects(true);
+  }
+
+  function handleServerShutdown(event) {
+    if (event && event.reason) {
+      console.warn("infra3D server stopped", event.reason);
+    }
+
+    showServerStoppedOverlay();
+  }
+
+  const bridge = new WebSocketBridge(window.INFRA3D_WEBSOCKET_URL, {
+    close: handleServerShutdown,
+  });
   bridge.register("initInfra3d", initInfra3d);
   bridge.register("moveTo2DPosition", moveTo2DPosition);
   bridge.register("getNetwork", getNetwork);
@@ -528,6 +562,11 @@ function main() {
         loginErrorMessage:
           "Beim Anmelden ist ein Fehler aufgetreten. Bitte melden Sie sich ab und versuchen Sie eine andere Anmeldung.",
         logoutButtonText: "Abmelden",
+        serverStoppedTitle: "infra3D beendet",
+        serverStoppedMessage:
+          "Der lokale infra3D-Server wurde beendet. Diese Browser-Ansicht kann nicht mehr mit QGIS kommunizieren.",
+        serverStoppedDetails:
+          "Starten Sie infra3D in QGIS erneut, um weiterzuarbeiten. Bitte schliessen Sie diesen Tab manuell.",
       },
       fr: {
         projectsTitle: "Projets",
@@ -537,6 +576,11 @@ function main() {
         loginErrorMessage:
           "Une erreur s'est produite lors de la connexion. Veuillez vous déconnecter et essayer une autre connexion.",
         logoutButtonText: "Se déconnecter",
+        serverStoppedTitle: "infra3D arrêté",
+        serverStoppedMessage:
+          "Le serveur local infra3D a été arrêté. Cette fenêtre du navigateur ne peut plus communiquer avec QGIS.",
+        serverStoppedDetails:
+          "Redémarrez infra3D dans QGIS pour continuer. Veuillez fermer cet onglet manuellement.",
       },
       en: {
         projectsTitle: "Projects",
@@ -546,6 +590,11 @@ function main() {
         loginErrorMessage:
           "An error occurred during login. Please log out and try another login.",
         logoutButtonText: "Log out",
+        serverStoppedTitle: "infra3D stopped",
+        serverStoppedMessage:
+          "The local infra3D server has stopped. This browser window can no longer communicate with QGIS.",
+        serverStoppedDetails:
+          "Restart infra3D in QGIS to continue. Please close this tab manually.",
       },
     };
 

@@ -57,6 +57,18 @@
           </g>
         </svg>
       </div>
+      <div id="shutdownOverlay" aria-live="polite">
+        <div id="shutdownContent">
+          <h1 data-i18n="serverStoppedTitle">infra3D stopped</h1>
+          <p class="text" data-i18n="serverStoppedMessage">
+            The local infra3D server has stopped. This browser window can no
+            longer communicate with QGIS.
+          </p>
+          <p class="text" id="shutdownDetails" data-i18n="serverStoppedDetails">
+            Restart infra3D in QGIS to continue. Please close this tab manually.
+          </p>
+        </div>
+      </div>
       <!-- Sidebar navigation to quickly change projects -->
       <aside id="sidebar">
         <div id="sidebarInner">

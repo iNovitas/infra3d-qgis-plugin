@@ -164,6 +164,10 @@ class LocalServer(QObject):
         except OSError:
             pass
 
+    def _build_websocket_close_payload(self, code: int, reason: str) -> bytes:
+        reason_bytes = reason.encode("utf-8")
+        return code.to_bytes(2, "big") + reason_bytes
+
     def _handle_websocket_connection(self, handler) -> None:
         websocket_key = handler.headers.get("Sec-WebSocket-Key")
         if not websocket_key:
@@ -245,7 +249,13 @@ class LocalServer(QObject):
 
         for socket_connection in clients:
             try:
-                socket_connection.shutdown(socket.SHUT_RDWR)
+                self._send_websocket_frame(
+                    socket_connection,
+                    0x8,
+                    self._build_websocket_close_payload(
+                        1001, "infra3D server stopped"
+                    ),
+                )
             except OSError:
                 pass
             try:

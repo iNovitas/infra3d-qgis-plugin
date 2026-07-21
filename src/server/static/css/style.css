@@ -148,6 +148,45 @@ body {
   visibility: visible;
 }
 
+#shutdownOverlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 30;
+  background:
+    radial-gradient(circle at top, rgba(13, 146, 210, 0.18), transparent 48%),
+    linear-gradient(135deg, rgba(5, 57, 82, 0.96), rgba(3, 24, 34, 0.98));
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+#shutdownOverlay.active {
+  display: flex;
+}
+
+#shutdownContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+  max-width: 560px;
+  padding: 28px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+}
+
+#shutdownContent .button {
+  margin: 0;
+}
+
+#app.shutdown #sidebar,
+#app.shutdown #content {
+  filter: blur(1px);
+}
+
 @keyframes loadingFirst {
   0% {
     scale: 0.8;
