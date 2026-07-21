@@ -67,6 +67,7 @@ class WebSocketBridge {
 
 window.infra3D_manager = null;
 window.infra3D_viewer = null;
+window.infra3D_non_migrated_network_loaded = false;
 
 /**
  * Main entry point. Registers the local server client and viewer events.
@@ -170,14 +171,19 @@ function main() {
       window.infra3D_manager = manager; // set manager as global variable
 
       const projects = await manager.getProjects();
-      updateProjectContainer(projects);
 
-      document.getElementById("sidebar").style.display = "flex"; // show sidebar with button
-      if (params.startProjectUid) {
-        loadViewer(params.startProjectUid);
-        toggleProjects(true); // close project selection as viewer is loaded
+      if (projects.length === 1) {
+        loadViewer(projects[0].uid);
       } else {
-        document.getElementById("projectPlaceholder").style.display = "flex"; // show placeholder text if no project is loaded
+        updateProjectContainer(projects);
+
+        document.getElementById("sidebar").style.display = "flex"; // show sidebar with button
+        if (params.startProjectUid) {
+          loadViewer(params.startProjectUid);
+          toggleProjects(true); // close project selection as viewer is loaded
+        } else {
+          document.getElementById("projectPlaceholder").style.display = "flex"; // show placeholder text if no project is loaded
+        }
       }
 
       hideLoading();
@@ -313,12 +319,10 @@ function main() {
   /*
   Add event listener to the project toggler --> To open and close projects
   */
-  document.addEventListener("DOMContentLoaded", () => {
-    const toggleBtn = document.getElementById("projectToggleBtn");
-    if (toggleBtn) {
-      toggleBtn.addEventListener("click", () => toggleProjects());
-    }
-  });
+  const toggleBtn = document.getElementById("projectToggleBtn");
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => toggleProjects());
+  }
 
   /**
    * Toggles the project selection display.
@@ -383,6 +387,7 @@ function main() {
     }
 
     if (!window.infra3D_viewer) return;
+    if (window.infra3D_non_migrated_network_loaded) return; // The network is already loaded, no need to load it again
 
     const extent = {
       minEasting: params.minEasting,
@@ -397,6 +402,19 @@ function main() {
     };
 
     const error = (error) => {
+      // If we are using a non-migrated user
+      if (
+        (typeof error === "string" &&
+          error.includes("only supported on migrated data")) ||
+        (error instanceof Error &&
+          error.message.includes("only supported on migrated data"))
+      ) {
+        window.infra3D_viewer.getRoutes(1).then((data) => {
+          post(data);
+          // Set the flag to true to prevent further calls
+          window.infra3D_non_migrated_network_loaded = true;
+        });
+      }
       pubsubClient.emit_event("networkError", { error });
     };
 
