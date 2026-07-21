@@ -30,11 +30,6 @@
         <translation>Identifiant du locataire</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings.ui" line="76"/>
-        <source>Server port number</source>
-        <translation>Numéro de port du serveur</translation>
-    </message>
-    <message>
         <location filename="../src/ui/settings.ui" line="102"/>
         <source>Layer Names</source>
         <translation>Noms des couches</translation>
@@ -191,11 +186,6 @@
         <location filename="../src/infra3d_settings.py" line="66"/>
         <source>Network - Hexes</source>
         <translation>Réseau - Hexes</translation>
-    </message>
-    <message>
-        <location filename="../src/infra3d_settings.py" line="169"/>
-        <source>Server port changed</source>
-        <translation>Le port du serveur a été modifié</translation>
     </message>
     <message>
         <location filename="../src/infra3d_settings.py" line="279"/>

@@ -30,11 +30,6 @@
         <translation>Mandanten ID</translation>
     </message>
     <message>
-        <location filename="../src/ui/settings.ui" line="76"/>
-        <source>Server port number</source>
-        <translation>Server-Portnummer</translation>
-    </message>
-    <message>
         <location filename="../src/ui/settings.ui" line="102"/>
         <source>Layer Names</source>
         <translation>Ebenennamen</translation>
@@ -191,11 +186,6 @@
         <location filename="../src/infra3d_settings.py" line="66"/>
         <source>Network - Hexes</source>
         <translation>Befahrungsnetz - Hexes</translation>
-    </message>
-    <message>
-        <location filename="../src/infra3d_settings.py" line="169"/>
-        <source>Server port changed</source>
-        <translation>Server Port wurde geändert</translation>
     </message>
     <message>
         <location filename="../src/infra3d_settings.py" line="279"/>

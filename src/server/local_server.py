@@ -22,42 +22,48 @@
  ***************************************************************************/
 """
 
+import atexit
+import base64
+import hashlib
 import json
 import mimetypes
+import random
+import socket
 import threading
 from collections import deque
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 from qgis.PyQt.QtCore import QObject, pyqtSignal
-from qgis.PyQt.QtNetwork import QHostAddress
-
-try:
-    from PyQt5.QtWebSockets import QWebSocketServer
-    NON_SECURE_MODE = QWebSocketServer.NonSecureMode
-except ImportError:
-    from PyQt6.QtWebSockets import QWebSocketServer
-    NON_SECURE_MODE = QWebSocketServer.SslMode.NonSecureMode
+from qgis.core import Qgis, QgsMessageLog
 
 
 class LocalServer(QObject):
     websocket_message_received = pyqtSignal(dict)
+    websocket_path = "/ws"
+    websocket_magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+    preferred_server_port = 55000
+    max_server_port_attempts = 5
+    random_server_port_min = 55000
+    random_server_port_max = 65535
+    random_server_port_attempts = 10
 
     def __init__(self):
         super().__init__()
+        self._server_port = None
         self.root_dir = Path(__file__).resolve().parent
         self.static_dir = self.root_dir / "static"
         self.running = False
         self.http_server = None
         self.started = threading.Event()
         self.startup_error = None
+        self.startup_error_message = None
         self._websocket_queue = deque()
-        self._websocket_server = None
         self._websocket_clients = set()
-        self._websocket_port = None
+        self._websocket_lock = threading.Lock()
+        atexit.register(self.stop)
 
     def index(self) -> str:
         return (
@@ -66,100 +72,208 @@ class LocalServer(QObject):
             .replace("__INFRA3D_WEBSOCKET_URL__", self.websocket_address())
         )
 
-    def start_websocket(self, port: int = 0) -> bool:
-        if self._websocket_server is not None:
-            return True
+    def websocket_address(self) -> str:
+        if self._server_port is None:
+            return ""
+        return f"ws://127.0.0.1:{self._server_port}{self.websocket_path}"
 
-        self._websocket_server = QWebSocketServer(
-            "Infra3dLocalServer",
-            NON_SECURE_MODE,
+    def server_address(self) -> str:
+        return f"http://127.0.0.1:{self._server_port}"
+
+    def _is_websocket_upgrade(self, handler) -> bool:
+        upgrade = handler.headers.get("Upgrade", "")
+        connection = handler.headers.get("Connection", "")
+        return (
+            handler.path == self.websocket_path
+            and upgrade.lower() == "websocket"
+            and "upgrade" in connection.lower()
         )
 
-        if not self._websocket_server.listen(QHostAddress("127.0.0.1"), port):
-            self._websocket_server = None
-            self.startup_error = True
-            return False
+    def _build_websocket_frame(self, opcode: int, payload: bytes = b"") -> bytes:
+        frame = bytearray()
+        frame.append(0x80 | (opcode & 0x0F))
 
-        self._websocket_port = int(self._websocket_server.serverPort())
-        self._websocket_server.newConnection.connect(self._on_new_websocket_connection)
-        return True
+        length = len(payload)
+        if length < 126:
+            frame.append(length)
+        elif length < 65536:
+            frame.append(126)
+            frame.extend(length.to_bytes(2, "big"))
+        else:
+            frame.append(127)
+            frame.extend(length.to_bytes(8, "big"))
 
-    def websocket_address(self) -> str:
-        if self._websocket_port is None:
-            return ""
-        return f"ws://127.0.0.1:{self._websocket_port}"
+        frame.extend(payload)
+        return bytes(frame)
+
+    def _send_websocket_frame(self, socket_connection, opcode: int, payload: bytes = b""):
+        socket_connection.sendall(self._build_websocket_frame(opcode, payload))
+
+    def _recv_exact(self, socket_connection, size: int) -> bytes:
+        chunks = bytearray()
+        while len(chunks) < size:
+            part = socket_connection.recv(size - len(chunks))
+            if not part:
+                return b""
+            chunks.extend(part)
+        return bytes(chunks)
+
+    def _decode_websocket_message(self, socket_connection):
+        header = self._recv_exact(socket_connection, 2)
+        if not header:
+            return None
+
+        opcode = header[0] & 0x0F
+        masked = bool(header[1] & 0x80)
+        payload_length = header[1] & 0x7F
+
+        if payload_length == 126:
+            extended = self._recv_exact(socket_connection, 2)
+            if not extended:
+                return None
+            payload_length = int.from_bytes(extended, "big")
+        elif payload_length == 127:
+            extended = self._recv_exact(socket_connection, 8)
+            if not extended:
+                return None
+            payload_length = int.from_bytes(extended, "big")
+
+        mask_key = b""
+        if masked:
+            mask_key = self._recv_exact(socket_connection, 4)
+            if not mask_key:
+                return None
+
+        payload = self._recv_exact(socket_connection, payload_length)
+        if payload_length and not payload:
+            return None
+
+        if masked:
+            payload = bytes(
+                byte ^ mask_key[index % 4]
+                for index, byte in enumerate(payload)
+            )
+
+        return opcode, payload
+
+    def _close_websocket_client(self, socket_connection):
+        with self._websocket_lock:
+            self._websocket_clients.discard(socket_connection)
+        try:
+            socket_connection.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+
+    def _handle_websocket_connection(self, handler) -> None:
+        websocket_key = handler.headers.get("Sec-WebSocket-Key")
+        if not websocket_key:
+            handler.send_error(HTTPStatus.BAD_REQUEST)
+            return
+
+        accept_key = base64.b64encode(
+            hashlib.sha1((websocket_key + self.websocket_magic).encode("ascii")).digest()
+        ).decode("ascii")
+
+        handler.send_response(HTTPStatus.SWITCHING_PROTOCOLS)
+        handler.send_header("Upgrade", "websocket")
+        handler.send_header("Connection", "Upgrade")
+        handler.send_header("Sec-WebSocket-Accept", accept_key)
+        handler.end_headers()
+        handler.close_connection = False
+
+        socket_connection = handler.connection
+        with self._websocket_lock:
+            self._websocket_clients.add(socket_connection)
+            queued_messages = list(self._websocket_queue)
+            self._websocket_queue.clear()
+
+        for message in queued_messages:
+            try:
+                self._send_websocket_frame(socket_connection, 0x1, message.encode("utf-8"))
+            except OSError:
+                self._close_websocket_client(socket_connection)
+                return
+
+        try:
+            while True:
+                decoded = self._decode_websocket_message(socket_connection)
+                if decoded is None:
+                    break
+
+                opcode, payload = decoded
+                if opcode == 0x8:
+                    break
+                if opcode == 0x9:
+                    try:
+                        self._send_websocket_frame(socket_connection, 0xA, payload)
+                    except OSError:
+                        break
+                    continue
+                if opcode != 0x1:
+                    continue
+
+                try:
+                    message = json.loads(payload.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    continue
+
+                self.websocket_message_received.emit(message)
+        finally:
+            self._close_websocket_client(socket_connection)
 
     def send_websocket_message(self, payload: dict):
         message = json.dumps(payload)
-        if not self._websocket_clients:
-            self._websocket_queue.append(message)
-            return
+        with self._websocket_lock:
+            if not self._websocket_clients:
+                self._websocket_queue.append(message)
+                return
+            clients = list(self._websocket_clients)
 
-        for socket in list(self._websocket_clients):
-            if socket is None:
-                continue
-            socket.sendTextMessage(message)
-
-    def _on_new_websocket_connection(self):
-        if self._websocket_server is None:
-            return
-
-        socket = self._websocket_server.nextPendingConnection()
-        if socket is None:
-            return
-
-        self._websocket_clients.add(socket)
-        socket.textMessageReceived.connect(
-            lambda message, ws=socket: self._handle_websocket_message(ws, message)
-        )
-        socket.disconnected.connect(lambda ws=socket: self._handle_websocket_closed(ws))
-
-        while self._websocket_queue:
-            socket.sendTextMessage(self._websocket_queue.popleft())
-
-    def _handle_websocket_message(self, socket, message: str):
-        try:
-            payload = json.loads(message)
-        except json.JSONDecodeError:
-            return
-
-        self.websocket_message_received.emit(payload)
-
-    def _handle_websocket_closed(self, socket):
-        self._websocket_clients.discard(socket)
-        socket.deleteLater()
+        encoded_message = message.encode("utf-8")
+        for socket_connection in clients:
+            try:
+                self._send_websocket_frame(socket_connection, 0x1, encoded_message)
+            except OSError:
+                self._close_websocket_client(socket_connection)
 
     def _close_websocket(self):
-        if self._websocket_server is None:
+        with self._websocket_lock:
+            clients = list(self._websocket_clients)
             self._websocket_clients.clear()
             self._websocket_queue.clear()
-            self._websocket_port = None
-            return
+            self._server_port = None
 
-        for socket in list(self._websocket_clients):
-            socket.close()
-            socket.deleteLater()
-
-        self._websocket_clients.clear()
-        self._websocket_queue.clear()
-        self._websocket_server.close()
-        self._websocket_server.deleteLater()
-        self._websocket_server = None
-        self._websocket_port = None
-
-    
+        for socket_connection in clients:
+            try:
+                socket_connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                socket_connection.close()
+            except OSError:
+                pass
 
     def _build_handler(self):
         server = self
 
         class Infra3dRequestHandler(BaseHTTPRequestHandler):
             server_version = "Infra3dLocalServer/1.0"
+            protocol_version = "HTTP/1.1"
 
             def log_message(self, format, *args):
+                QgsMessageLog.logMessage(
+                    f"{self.address_string()} - {format % args}",
+                    "infra3D",
+                    Qgis.Info,
+                )
                 return
 
             def do_GET(self):
                 parsed_url = urlparse(self.path)
+                if server._is_websocket_upgrade(self):
+                    server._handle_websocket_connection(self)
+                    return
+
                 if parsed_url.path in ("/", "/index.html"):
                     self._send_text(server.index(), "text/html; charset=utf-8")
                     return
@@ -175,10 +289,7 @@ class LocalServer(QObject):
                 self.send_error(HTTPStatus.NOT_FOUND)
 
             def do_POST(self):
-                parsed_url = urlparse(self.path)
-                payload = self._read_json_body()
-                # No POST endpoints for polling remain. Only static assets and page serving.
-
+                _ = self._read_json_body()
                 self.send_error(HTTPStatus.NOT_FOUND)
 
             def _read_json_body(self):
@@ -204,7 +315,10 @@ class LocalServer(QObject):
                 self._send_bytes(target.read_bytes(), content_type)
 
             def _send_json(self, payload):
-                self._send_bytes(json.dumps(payload).encode("utf-8"), "application/json; charset=utf-8")
+                self._send_bytes(
+                    json.dumps(payload).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                )
 
             def _send_text(self, payload: str, content_type: str):
                 self._send_bytes(payload.encode("utf-8"), content_type)
@@ -219,23 +333,75 @@ class LocalServer(QObject):
 
         return Infra3dRequestHandler
 
-    def start(self, port: int = 5000, debug: bool = False):
+    def start(self):
+        if self.running or self.http_server is not None:
+            self.startup_error = True
+            self.started.set()
+            return
+
         self.running = True
         self.started.clear()
         self.startup_error = None
+        self.startup_error_message = None
         handler = self._build_handler()
 
-        class ReusableThreadingHTTPServer(ThreadingHTTPServer):
-            allow_reuse_address = True
+        class NonReusableThreadingHTTPServer(ThreadingHTTPServer):
+            allow_reuse_address = False
 
-        try:
-            self.http_server = ReusableThreadingHTTPServer(("127.0.0.1", port), handler)
-            self.started.set()
-        except Exception:
+            def server_bind(self):
+                if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+                    self.socket.setsockopt(
+                        socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1
+                    )
+                super().server_bind()
+
+        self.http_server = None
+        self._server_port = None
+
+        # Attempt to bind to the preferred port first, then try a few random ports if that fails
+        for port in range(
+            self.preferred_server_port,
+            self.preferred_server_port + self.max_server_port_attempts,
+        ):
+            try:
+                self.http_server = NonReusableThreadingHTTPServer(("127.0.0.1", port), handler)
+                self._server_port = port
+                self.started.set()
+                break
+            except OSError:
+                self.http_server = None
+                self._server_port = None
+                continue
+            except Exception:
+                self.http_server = None
+                self._server_port = None
+                break
+
+        if self.http_server is None:
+            for _ in range(self.random_server_port_attempts):
+                port = random.randint(self.random_server_port_min, self.random_server_port_max)
+                try:
+                    self.http_server = NonReusableThreadingHTTPServer(("127.0.0.1", port), handler)
+                    self._server_port = port
+                    self.started.set()
+                    break
+                except OSError:
+                    self.http_server = None
+                    self._server_port = None
+                    continue
+                except Exception:
+                    self.http_server = None
+                    self._server_port = None
+                    break
+
+        if self.http_server is None:
             self.startup_error = True
+            self.startup_error_message = (
+                "infra3D server could not be started on ports 55000-55004 or a random fallback port!"
+            )
             self.running = False
             self.started.set()
-            raise
+            return
 
         try:
             self.http_server.serve_forever(poll_interval=0.25)
@@ -256,8 +422,3 @@ class LocalServer(QObject):
         self.http_server = None
         self.running = False
         self.started.clear()
-
-
-if __name__ == "__main__":
-    server = LocalServer()
-    server.start()

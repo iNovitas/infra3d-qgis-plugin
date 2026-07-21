@@ -41,7 +41,7 @@ from qgis.PyQt.QtCore import (
     Qt,
 )
 from qgis.PyQt.QtGui import QIcon, QDesktopServices, QGuiApplication
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QMessageBox
 
 from .infra3d_settings_dialog import (
     Infra3DSettingsDialog,
@@ -94,6 +94,9 @@ class Infra3d:
 
         # Prepare local HTTP server
         self.local_server = LocalServer()
+        app = QCoreApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self.local_server.stop)
 
         # Initialize Infra3D client
         self.infra3d_client = Infra3dClient(self.local_server)
@@ -222,6 +225,19 @@ class Infra3d:
         # remove the toolbar
         del self.toolbar
 
+    def _show_local_server_startup_error(self, message: str):
+        QMessageBox.critical(
+            self.iface.mainWindow(),
+            QCoreApplication.translate("infra3D", "infra3D server error"),
+            message,
+        )
+
+    def _safe_disconnect(self, signal, slot):
+        try:
+            signal.disconnect(slot)
+        except (TypeError, RuntimeError):
+            pass
+
     def start_infra3d(self, checked: bool):
         """
         Starts/ends the webserver.
@@ -233,7 +249,7 @@ class Infra3d:
         """
         if checked:
             if self.local_server.running is False:
-                self.start_local_server(self.settings.server_port)
+                self.start_local_server()
 
             if self.wait_for_local_server() is False:
                 self.show_settings_action.setEnabled(True)
@@ -290,7 +306,7 @@ class Infra3d:
             self.iface.mapCanvas().setMapTool(self.panTool)
 
     def check_settings(self) -> bool:
-        """Check whether the settings are configured propertly.
+        """Check whether the settings are configured properly.
 
         Returns:
             bool: Return True if the settings are defined,
@@ -363,13 +379,13 @@ class Infra3d:
         """Disconnect the signals of the infra3D client with the respective slots
         in this plugin.
         """
-        self.infra3d_client.webapp_loaded.disconnect(self._on_webapp_loaded)
-        self.infra3d_client.network_received.disconnect(self._on_network_received)
-        self.infra3d_client.webapp_initialized.disconnect(self._on_webapp_initialized)
-        self.infra3d_client.position_changed.disconnect(self.update_marker_position)
-        self.infra3d_client.azimuth_changed.disconnect(self.update_marker_orientation)
+        self._safe_disconnect(self.infra3d_client.webapp_loaded, self._on_webapp_loaded)
+        self._safe_disconnect(self.infra3d_client.network_received, self._on_network_received)
+        self._safe_disconnect(self.infra3d_client.webapp_initialized, self._on_webapp_initialized)
+        self._safe_disconnect(self.infra3d_client.position_changed, self.update_marker_position)
+        self._safe_disconnect(self.infra3d_client.azimuth_changed, self.update_marker_orientation)
 
-        self.iface.mapCanvas().extentsChanged.disconnect(self.onExtentsChanged)
+        self._safe_disconnect(self.iface.mapCanvas().extentsChanged, self.onExtentsChanged)
 
     def _on_webapp_initialized(self):
         """
@@ -470,20 +486,13 @@ class Infra3d:
         )
         self.iface.mapCanvas().refresh()
 
-    def start_local_server(self, port: int):
+    def start_local_server(self):
         """Start the local server in a different thread
         so we don't block the QGIS application.
-
-        Args:
-            port (int): Port on which the server should bind itself to
         """
 
         def start_server():
-            self.local_server.start(port, debug=False)
-
-        if self.local_server.start_websocket(port + 1) is False:
-            self.local_server.started.set()
-            return
+            self.local_server.start()
 
         self.local_server_thread = Thread(target=start_server, daemon=True)
         self.local_server_thread.start()
@@ -498,14 +507,18 @@ class Infra3d:
                 break
             time.sleep(0.05)
 
-        self.iface.messageBar().pushMessage(
-            "infra3D",
+        error_message = getattr(self.local_server, "startup_error_message", None)
+        if error_message:
+            self._show_local_server_startup_error(
+                QCoreApplication.translate("infra3D", error_message)
+            )
+            return False
+
+        self._show_local_server_startup_error(
             QCoreApplication.translate(
                 "infra3D",
                 "infra3D server did not start correctly. Please restart QGIS",
-            ),
-            Qgis.MessageLevel.Critical,  # type: ignore
-            5,
+            )
         )
         return False
 
@@ -515,4 +528,4 @@ class Infra3d:
         Returns:
             str: Server address
         """
-        return f"http://127.0.0.1:{self.settings.server_port}"
+        return self.local_server.server_address()

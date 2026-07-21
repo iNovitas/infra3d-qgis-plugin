@@ -10,7 +10,6 @@ from qgis.core import (
     QgsFeature,
     QgsGeometry,
     QgsPointXY,
-    QgsMessageLog,
 )
 from qgis.PyQt.QtCore import QObject, QCoreApplication
 

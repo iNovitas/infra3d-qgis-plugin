@@ -46,16 +46,16 @@ The Infra3D plugin is a connection between infra3D (https://www.infra3d.com) and
 
 ## 2. Architecture
 
-High level: three main components communicate via HTTP (static assets) and WebSocket (real-time messaging):
+High level: three main components communicate via HTTP and a WebSocket upgrade on the same local port:
 
 - QGIS plugin (`src/`): Controller for QGIS UI, coordinates conversions, and message routing to the local bridge.
-- Local bridge server (`server/local_server.py`): Serves static files and exposes a WebSocket endpoint for bidirectional messages.
+- Local bridge server (`server/local_server.py`): Serves static files and upgrades `/ws` to WebSocket for bidirectional messages.
 - Web viewer (`server/static/`): infra3D integration and a thin UI for project selection and viewer initialization.
 
 Message patterns
 
 - HTTP: serves the viewer UI and static assets (default host: `localhost`, default port: 5000).
-- WebSocket: carries both RPC-style control messages and Pub/Sub-style event broadcasts between the web viewer and QGIS.
+- WebSocket: shares the same port via `/ws` and carries both RPC-style control messages and Pub/Sub-style event broadcasts between the web viewer and QGIS.
 
 Common message types (both directions):
 
@@ -80,8 +80,7 @@ Source file responsibilities
 
 Ports and configuration
 
-- Default HTTP: `localhost:5000` (configurable in settings).
-- WebSocket: typically on the next available port (server will pick an adjacent port if configured so).
+- Default HTTP and WebSocket: `localhost:5000` (configurable in settings).
 
 Security considerations
 

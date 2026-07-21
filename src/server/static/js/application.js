@@ -12,6 +12,7 @@ class WebSocketBridge {
     delete this.methods[name];
   }
   start() {
+    console.log(`Connecting to websocket at ${this.url}`);
     this.socket = new WebSocket(this.url);
     this.socket.addEventListener("open", () => {
       while (this.pending.length > 0) {

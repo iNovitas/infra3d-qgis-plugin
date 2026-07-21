@@ -130,7 +130,7 @@ class Infra3dClient(QObject):
                 self.local_server.websocket_message_received.disconnect(
                     self._handle_websocket_message
                 )
-            except TypeError:
+            except (TypeError, RuntimeError):
                 pass
             self._signal_connected = False
 

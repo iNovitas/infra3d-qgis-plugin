@@ -93,8 +93,6 @@ class Infra3DSettingsDialog(QDialog, FORM_CLASS):
         # Infra3D credentials
         self.lineEdit_tenantIdentifier.setText(self.settings.tenant_identifier)
         self.lineEdit_startProjectUID.setText(self.settings.start_project_uid)
-        # Local server
-        self.spinBox_serverPort.setValue(int(self.settings.server_port))
 
         self.lineEdit_layerGroup.setText(self.settings.layer_group)
         self.lineEdit_currentPositionLayer.setText(self.settings.current_position_layer)
@@ -110,9 +108,6 @@ class Infra3DSettingsDialog(QDialog, FORM_CLASS):
         # Infra3D credentials
         self.settings.tenant_identifier = self.lineEdit_tenantIdentifier.text()
         self.settings.start_project_uid = self.lineEdit_startProjectUID.text()
-
-        # Local server
-        self.settings.server_port = self.spinBox_serverPort.value()
 
         self.settings.layer_group = self.lineEdit_layerGroup.text()
         self.settings.current_position_layer = self.lineEdit_currentPositionLayer.text()
@@ -153,7 +148,6 @@ class Infra3DSettingsDialog(QDialog, FORM_CLASS):
 
             self.lineEdit_tenantIdentifier.setText(self.settings.tenant_identifier)
             self.lineEdit_startProjectUID.setText(self.settings.start_project_uid)
-            self.spinBox_serverPort.setValue(int(self.settings.server_port))
             self.lineEdit_layerGroup.setText(self.settings.layer_group)
             self.lineEdit_currentPositionLayer.setText(
                 self.settings.current_position_layer
