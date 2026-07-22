@@ -29,7 +29,7 @@ from .infra3d_settings import Infra3dSettings
 from .infra3d_settings_loarule import LoaRule, LoaRuleTableModel
 from qgis.core import Qgis, QgsApplication
 from qgis.PyQt import uic
-from qgis.PyQt.QtWidgets import QMainWindow, QDialog, QDialogButtonBox, QMessageBox
+from qgis.PyQt.QtWidgets import QMainWindow, QDialog, QDialogButtonBox
 from qgis.PyQt.QtCore import (
     QModelIndex,
     Qt,

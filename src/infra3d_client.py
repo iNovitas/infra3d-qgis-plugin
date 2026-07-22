@@ -24,7 +24,6 @@
 
 # -*- coding: utf-8 -*-
 
-import json
 import uuid
 
 from qgis.PyQt.QtCore import pyqtSignal, QObject, QCoreApplication
