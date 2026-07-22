@@ -45,7 +45,6 @@ class WebSocketBridge {
       }
     });
     this.socket.addEventListener("close", (event) => {
-      console.warn("infra3D websocket closed");
       if (this.handlers.close) {
         this.handlers.close(event);
       }
@@ -78,6 +77,16 @@ window.infra3D_non_migrated_network_loaded = false;
  * Main entry point. Registers the local server client and viewer events.
  */
 function main() {
+  let isPageUnloading = false;
+
+  window.addEventListener("beforeunload", () => {
+    isPageUnloading = true;
+  });
+
+  window.addEventListener("pagehide", () => {
+    isPageUnloading = true;
+  });
+
   function hideLoading() {
     document.getElementById("loadingOverlay").classList.remove("active");
   }
@@ -107,7 +116,13 @@ function main() {
   }
 
   const bridge = new WebSocketBridge(window.INFRA3D_WEBSOCKET_URL, {
-    close: handleServerShutdown,
+    close: (event) => {
+      if (isPageUnloading) {
+        return;
+      }
+
+      handleServerShutdown(event);
+    },
   });
   bridge.register("initInfra3d", initInfra3d);
   bridge.register("moveTo2DPosition", moveTo2DPosition);
