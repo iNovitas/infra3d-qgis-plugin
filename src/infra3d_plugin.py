@@ -30,7 +30,7 @@ import json
 import math
 
 from qgis.gui import QgisInterface, QgsMapToolPan
-from qgis.core import Qgis, QgsPointXY, QgsRectangle
+from qgis.core import Qgis, QgsPointXY, QgsRectangle, QgsMessageLog
 from qgis.PyQt.QtCore import (
     QEventLoop,
     QSettings,
@@ -39,6 +39,7 @@ from qgis.PyQt.QtCore import (
     QUrl,
     QDir,
     Qt,
+    QTimer,
 )
 from qgis.PyQt.QtGui import QIcon, QDesktopServices, QGuiApplication
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
@@ -113,6 +114,10 @@ class Infra3d:
         self.layer_utils = Infra3DLayerUtils(self.iface, self.settings)
 
         self.first_position_received = False
+        self._extent_change_timer = QTimer(self.iface.mainWindow())
+        self._extent_change_timer.setSingleShot(True)
+        self._extent_change_timer.setInterval(250) # 250 ms debounce interval
+        self._extent_change_timer.timeout.connect(self._process_on_extents_changed)
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
@@ -178,6 +183,26 @@ class Infra3d:
             if not extent or extent == "Null":
                 return
 
+            self._extent_change_timer.start()
+        except Exception as e:
+            self.iface.messageBar().pushMessage(
+                "infra3D",
+                QCoreApplication.translate(
+                    "infra3D", "Error while synchronizing network: "
+                )
+                + str(e),
+                Qgis.MessageLevel.Warning,
+                5,
+            )
+
+    def _process_on_extents_changed(self) -> None:
+        """Processes a debounced map extent change."""
+        try:
+            extent = self.iface.mapCanvas().extent().toString()
+
+            if not extent or extent == "Null":
+                return
+
             ll, ur = extent.split(" : ")
             minEasting, minNorthing = [float(i) for i in ll.split(",")]
             maxEasting, maxNorthing = [float(i) for i in ur.split(",")]
@@ -193,6 +218,12 @@ class Infra3d:
                     None,
                 )
                 if loa_rule is not None:
+                    QgsMessageLog.logMessage(
+                        "Synchronizing network...",
+                        "infra3D",
+                        Qgis.Info,
+                    )
+
                     self.infra3d_client.getNetwork(
                         loa_rule["type"],
                         loa_rule["level"],
@@ -216,6 +247,7 @@ class Infra3d:
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
 
+        self._extent_change_timer.stop()
         self.infra3d_client.disconnect()
         self.local_server.stop()
 
