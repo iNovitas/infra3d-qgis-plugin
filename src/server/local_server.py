@@ -271,11 +271,6 @@ class LocalServer(QObject):
             protocol_version = "HTTP/1.1"
 
             def log_message(self, format, *args):
-                QgsMessageLog.logMessage(
-                    f"{self.address_string()} - {format % args}",
-                    "infra3D",
-                    Qgis.Info,
-                )
                 return
 
             def do_GET(self):

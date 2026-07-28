@@ -73,6 +73,8 @@ window.infra3D_manager = null;
 window.infra3D_viewer = null;
 window.infra3D_non_migrated_network_loaded = false;
 
+let getNetworkAbortController = null;
+
 /**
  * Main entry point. Registers the local server client and viewer events.
  */
@@ -421,6 +423,15 @@ function main() {
    * @param {JSON} params parameters of the bounding box and the level and loa
    */
   function getNetwork(params) {
+    if (getNetworkAbortController) {
+      getNetworkAbortController.abort();
+    }
+    getNetworkAbortController = new AbortController();
+    // Capture the controller for this invocation so that later re-creations
+    // of getNetworkAbortController don't affect checks for this specific
+    // request (avoids race where an old request posts after being aborted).
+    const thisGetNetworkAbortController = getNetworkAbortController;
+
     // Check all attributes are provided
     if (
       params === undefined ||
@@ -448,10 +459,22 @@ function main() {
     };
 
     const post = (routes) => {
+      // If the request was aborted meanwhile, do not post the data
+      if (
+        thisGetNetworkAbortController &&
+        thisGetNetworkAbortController.signal.aborted
+      )
+        return;
       pubsubClient.emit_event("newNetwork", { routes });
     };
 
     const error = (error) => {
+      // If the request was aborted meanwhile, ignore errors
+      if (
+        thisGetNetworkAbortController &&
+        thisGetNetworkAbortController.signal.aborted
+      )
+        return;
       // If we are using a non-migrated user
       if (
         (typeof error === "string" &&
