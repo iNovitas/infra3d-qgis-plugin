@@ -358,6 +358,10 @@ function main() {
       });
     });
 
+    if (window.infra3D_viewer) {
+      window.infra3D_viewer.destroy();
+    }
+
     window.infra3D_viewer = await window.infra3D_manager.initViewer({
       project_uid: project_uid,
       start_position: start_position ? start_position : undefined,
