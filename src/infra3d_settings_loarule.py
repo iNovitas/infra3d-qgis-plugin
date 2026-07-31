@@ -1,4 +1,4 @@
-from qgis.PyQt.QtCore import Qt, QAbstractTableModel, QModelIndex, QCoreApplication
+from qgis.PyQt.QtCore import QAbstractTableModel, QCoreApplication, QModelIndex, Qt
 
 
 class LoaRule:
@@ -20,10 +20,14 @@ class LoaRuleTableModel(QAbstractTableModel):
         super().__init__(parent)
         self.rules = rules or []
 
-    def rowCount(self, parent=QModelIndex()):
+    def rowCount(self, parent=None):
+        if parent is None:
+            parent = QModelIndex()
         return len(self.rules)
 
-    def columnCount(self, parent=QModelIndex()):
+    def columnCount(self, parent=None):
+        if parent is None:
+            parent = QModelIndex()
         return 4
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):

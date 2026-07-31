@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 /***************************************************************************
  Infra3dClient
@@ -26,7 +25,7 @@
 
 import uuid
 
-from qgis.PyQt.QtCore import pyqtSignal, QObject, QCoreApplication
+from qgis.PyQt.QtCore import QCoreApplication, QObject, pyqtSignal
 from qgis.PyQt.QtWidgets import QMessageBox
 
 
@@ -43,7 +42,7 @@ class Infra3dClient(QObject):
     network_received = pyqtSignal(dict)
 
     def __init__(self, local_server):
-        super(Infra3dClient, self).__init__()
+        super().__init__()
         self.local_server = local_server
         self._connected = False
         self._signal_connected = False
@@ -117,10 +116,7 @@ class Infra3dClient(QObject):
         self.connect()
         request = {"id": str(uuid.uuid1()), "method": method_name, "args": args}
 
-        try:
-            self.local_server.send_websocket_message(request)
-        except Exception:
-            pass
+        self.local_server.send_websocket_message(request)
 
     def disconnect(self):
         self._connected = False

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 /***************************************************************************
  LocalServer
@@ -37,7 +36,6 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from qgis.PyQt.QtCore import QObject, pyqtSignal
-from qgis.core import Qgis, QgsMessageLog
 
 
 class LocalServer(QObject):
@@ -74,7 +72,7 @@ class LocalServer(QObject):
 
     def websocket_address(self) -> str:
         if self._server_port is None:
-            return ""
+            return f"ws://127.0.0.1:{self.preferred_server_port}{self.websocket_path}"
         return f"ws://127.0.0.1:{self._server_port}{self.websocket_path}"
 
     def server_address(self) -> str:
@@ -377,10 +375,6 @@ class LocalServer(QObject):
                 self.http_server = None
                 self._server_port = None
                 continue
-            except Exception:
-                self.http_server = None
-                self._server_port = None
-                break
 
         if self.http_server is None:
             for _ in range(self.random_server_port_attempts):
@@ -394,10 +388,6 @@ class LocalServer(QObject):
                     self.http_server = None
                     self._server_port = None
                     continue
-                except Exception:
-                    self.http_server = None
-                    self._server_port = None
-                    break
 
         if self.http_server is None:
             self.startup_error = True

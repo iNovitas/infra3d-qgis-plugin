@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 /***************************************************************************
  Infra3d
@@ -22,35 +21,35 @@
  ***************************************************************************/
 """
 
-from threading import Thread
-import os.path
-import time
-from pyproj import Transformer
 import json
 import math
+import os.path
+import time
+from threading import Thread
 
+from pyproj import Transformer
+from qgis.core import Qgis, QgsPointXY, QgsRectangle
 from qgis.gui import QgisInterface, QgsMapToolPan
-from qgis.core import Qgis, QgsPointXY, QgsRectangle, QgsMessageLog
 from qgis.PyQt.QtCore import (
+    QCoreApplication,
+    QDir,
     QEventLoop,
     QSettings,
-    QTranslator,
-    QCoreApplication,
-    QUrl,
-    QDir,
     Qt,
     QTimer,
+    QTranslator,
+    QUrl,
 )
-from qgis.PyQt.QtGui import QIcon, QDesktopServices, QGuiApplication
+from qgis.PyQt.QtGui import QDesktopServices, QGuiApplication, QIcon
 from qgis.PyQt.QtWidgets import QAction, QMessageBox
 
+from .infra3d_client import Infra3dClient
+from .infra3d_layer_utils import Infra3DLayerUtils
+from .infra3d_map_tool import Infra3dMapTool
+from .infra3d_settings import Infra3dSettings
 from .infra3d_settings_dialog import (
     Infra3DSettingsDialog,
 )
-from .infra3d_settings import Infra3dSettings
-from .infra3d_client import Infra3dClient
-from .infra3d_map_tool import Infra3dMapTool
-from .infra3d_layer_utils import Infra3DLayerUtils
 from .server.local_server import LocalServer
 
 
@@ -79,7 +78,7 @@ class Infra3d:
         # initialize locale
         locale = QSettings().value("locale/userLocale", "en")[0:2]
         locale_path = os.path.join(
-            self.plugin_dir, "i18n", "infra3d_{}.qm".format(locale)
+            self.plugin_dir, "i18n", f"infra3d_{locale}.qm"
         )
 
         if os.path.exists(locale_path):
@@ -176,73 +175,45 @@ class Infra3d:
         """
         Fired whenever the extent of the QGIS mapCanvas changes.
         """
-        try:
-            extent = self.iface.mapCanvas().extent().toString()
+        extent = self.iface.mapCanvas().extent().toString()
 
-            # If QGIS is started, the extent is "Null" -.-
-            if not extent or extent == "Null":
-                return
+        # If QGIS is started, the extent is "Null" -.-
+        if not extent or extent == "Null":
+            return
 
-            self._extent_change_timer.start()
-        except Exception as e:
-            self.iface.messageBar().pushMessage(
-                "infra3D",
-                QCoreApplication.translate(
-                    "infra3D", "Error while synchronizing network: "
-                )
-                + str(e),
-                Qgis.MessageLevel.Warning,
-                5,
-            )
+        self._extent_change_timer.start()
 
     def _process_on_extents_changed(self) -> None:
         """Processes a debounced map extent change."""
-        try:
-            extent = self.iface.mapCanvas().extent().toString()
+        extent = self.iface.mapCanvas().extent().toString()
 
-            if not extent or extent == "Null":
-                return
+        if not extent or extent == "Null":
+            return
 
-            ll, ur = extent.split(" : ")
-            minEasting, minNorthing = [float(i) for i in ll.split(",")]
-            maxEasting, maxNorthing = [float(i) for i in ur.split(",")]
-            epsg = self.iface.mapCanvas().mapSettings().destinationCrs().authid()
-            epsg_number = epsg.split(":")[1] if ":" in epsg else epsg
+        ll, ur = extent.split(" : ")
+        minEasting, minNorthing = [float(i) for i in ll.split(",")]
+        maxEasting, maxNorthing = [float(i) for i in ur.split(",")]
+        epsg = self.iface.mapCanvas().mapSettings().destinationCrs().authid()
+        epsg_number = epsg.split(":")[1] if ":" in epsg else epsg
 
-            scale = self.iface.mapCanvas().scale()
-            loa_rules = self.settings.loa_rules
+        scale = self.iface.mapCanvas().scale()
+        loa_rules = self.settings.loa_rules
 
-            if loa_rules is not None:
-                loa_rule = next(
-                    (r for r in loa_rules if r["min"] <= scale < r["max"]),
-                    None,
-                )
-                if loa_rule is not None:
-                    QgsMessageLog.logMessage(
-                        "Synchronizing network...",
-                        "infra3D",
-                        Qgis.Info,
-                    )
-
-                    self.infra3d_client.getNetwork(
-                        loa_rule["type"],
-                        loa_rule["level"],
-                        minEasting,
-                        maxEasting,
-                        minNorthing,
-                        maxNorthing,
-                        int(epsg_number),
-                    )
-        except Exception as e:
-            self.iface.messageBar().pushMessage(
-                "infra3D",
-                QCoreApplication.translate(
-                    "infra3D", "Error while synchronizing network: "
-                )
-                + str(e),
-                Qgis.MessageLevel.Warning,
-                5,
+        if loa_rules is not None:
+            loa_rule = next(
+                (r for r in loa_rules if r["min"] <= scale < r["max"]),
+                None,
             )
+            if loa_rule is not None:
+                self.infra3d_client.getNetwork(
+                    loa_rule["type"],
+                    loa_rule["level"],
+                    minEasting,
+                    maxEasting,
+                    minNorthing,
+                    maxNorthing,
+                    int(epsg_number),
+                )
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""

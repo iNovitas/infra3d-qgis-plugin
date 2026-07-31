@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 /***************************************************************************
  Infra3DSettings
@@ -24,18 +23,18 @@
 
 import os
 
-from .infra3d_settings import Infra3dSettings
-
-from .infra3d_settings_loarule import LoaRule, LoaRuleTableModel
 from qgis.core import Qgis, QgsApplication
 from qgis.PyQt import uic
-from qgis.PyQt.QtWidgets import QMainWindow, QDialog, QDialogButtonBox
 from qgis.PyQt.QtCore import (
-    QModelIndex,
-    Qt,
-    QSortFilterProxyModel,
     QCoreApplication,
+    QModelIndex,
+    QSortFilterProxyModel,
+    Qt,
 )
+from qgis.PyQt.QtWidgets import QDialog, QDialogButtonBox, QMainWindow
+
+from .infra3d_settings import Infra3dSettings
+from .infra3d_settings_loarule import LoaRule, LoaRuleTableModel
 
 FORM_CLASS, _ = uic.loadUiType(
     os.path.join(os.path.dirname(__file__), "ui/settings.ui")
@@ -44,7 +43,7 @@ FORM_CLASS, _ = uic.loadUiType(
 
 class Infra3DSettingsDialog(QDialog, FORM_CLASS):
     def __init__(self, parent: QMainWindow, iface, settings: Infra3dSettings):
-        super(Infra3DSettingsDialog, self).__init__(parent)
+        super().__init__(parent)
 
         self.setupUi(self)
         self.iface = iface

@@ -1,17 +1,18 @@
 import json
 import os
 
-from .infra3d_settings import Infra3dSettings
 from qgis.core import (
     Qgis,
-    QgsProject,
-    QgsVectorLayer,
-    QgsJsonUtils,
     QgsFeature,
     QgsGeometry,
+    QgsJsonUtils,
     QgsPointXY,
+    QgsProject,
+    QgsVectorLayer,
 )
-from qgis.PyQt.QtCore import QObject, QCoreApplication
+from qgis.PyQt.QtCore import QCoreApplication, QObject
+
+from .infra3d_settings import Infra3dSettings
 
 
 class Infra3DLayerUtils(QObject):
@@ -58,32 +59,30 @@ class Infra3DLayerUtils(QObject):
         )
 
     def remove_layers(self):
+        project = QgsProject.instance()
         if self.network_layer_lines_id:
-            try:
-                QgsProject.instance().removeMapLayer(self.network_layer_lines_id)
-            except Exception:
-                pass
+            if project.mapLayer(self.network_layer_lines_id) is not None:
+                project.removeMapLayer(self.network_layer_lines_id)
+
             self.network_layer_lines_id = None
 
         if self.network_layer_hexes_id:
-            try:
-                QgsProject.instance().removeMapLayer(self.network_layer_hexes_id)
-            except Exception:
-                pass
+            if project.mapLayer(self.network_layer_hexes_id) is not None:
+                project.removeMapLayer(self.network_layer_hexes_id)
+
             self.network_layer_hexes_id = None
 
         if self.marker_layer_id:
-            try:
-                QgsProject.instance().removeMapLayer(self.marker_layer_id)
-            except Exception:
-                pass
+            if project.mapLayer(self.marker_layer_id) is not None:
+                project.removeMapLayer(self.marker_layer_id)
+
             self.marker_layer_id = None
 
         if self.layer_group is not None:
             try:
                 if len(self.layer_group.findLayerIds()) == 0:
-                    QgsProject.instance().layerTreeRoot().removeChildNode(self.layer_group)
-            except Exception:
+                    project.layerTreeRoot().removeChildNode(self.layer_group)
+            except RuntimeError:
                 pass
             
             self.layer_group = None
@@ -216,7 +215,7 @@ class Infra3DLayerUtils(QObject):
                     5,
                 )
 
-    def update_marker(self, position: QgsPointXY = None, azimuth: float = None) -> None:
+    def update_marker(self, position: QgsPointXY = None, azimuth: float | None = None) -> None:
         layer = QgsProject.instance().mapLayer(self.marker_layer_id)
         if layer is None:
             self.iface.messageBar().pushMessage(

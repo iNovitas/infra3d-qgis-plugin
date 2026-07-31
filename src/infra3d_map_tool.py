@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 /***************************************************************************
  Infra3dMapTool
@@ -22,16 +21,17 @@
  ***************************************************************************/
 """
 
-from qgis.core import QgsProject, QgsSnappingUtils, QgsPointLocator, QgsPointXY, Qgis
+from collections.abc import Callable
+
+from pyproj import Transformer
+from qgis.core import Qgis, QgsPointLocator, QgsPointXY, QgsProject, QgsSnappingUtils
 from qgis.gui import (
-    QgsMapToolEmitPoint,
     QgisInterface,
     QgsMapMouseEvent,
+    QgsMapToolEmitPoint,
     QgsSnapIndicator,
 )
 from qgis.PyQt.QtCore import QCoreApplication
-from typing import Callable
-from pyproj import Transformer
 
 from .infra3d_client import Infra3dClient
 
@@ -44,7 +44,7 @@ class Infra3dMapTool(QgsMapToolEmitPoint):
         infra3d_client: Infra3dClient,
         callback_start_infra3d: Callable,
     ):
-        super(Infra3dMapTool, self).__init__(iface.mapCanvas())
+        super().__init__(iface.mapCanvas())
         self.iface = iface
         self.map_canvas = self.iface.mapCanvas()
         self.snapper = QgsSnapIndicator(self.map_canvas)
