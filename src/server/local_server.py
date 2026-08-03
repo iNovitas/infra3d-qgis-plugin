@@ -26,7 +26,7 @@ import base64
 import hashlib
 import json
 import mimetypes
-import random
+import secrets
 import socket
 import threading
 from collections import deque
@@ -173,7 +173,7 @@ class LocalServer(QObject):
             return
 
         accept_key = base64.b64encode(
-            hashlib.sha1((websocket_key + self.websocket_magic).encode("ascii")).digest()
+            hashlib.sha1((websocket_key + self.websocket_magic).encode("ascii"), usedforsecurity=False).digest()
         ).decode("ascii")
 
         handler.send_response(HTTPStatus.SWITCHING_PROTOCOLS)
@@ -378,7 +378,7 @@ class LocalServer(QObject):
 
         if self.http_server is None:
             for _ in range(self.random_server_port_attempts):
-                port = random.randint(self.random_server_port_min, self.random_server_port_max)
+                port = secrets.choice(list(range(self.random_server_port_min, self.random_server_port_max + 1)))
                 try:
                     self.http_server = NonReusableThreadingHTTPServer(("127.0.0.1", port), handler)
                     self._server_port = port
