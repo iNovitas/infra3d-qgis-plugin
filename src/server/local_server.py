@@ -121,6 +121,7 @@ class LocalServer(QObject):
         if not header:
             return None
 
+        final = bool(header[0] & 0x80)
         opcode = header[0] & 0x0F
         masked = bool(header[1] & 0x80)
         payload_length = header[1] & 0x7F
@@ -152,7 +153,7 @@ class LocalServer(QObject):
                 for index, byte in enumerate(payload)
             )
 
-        return opcode, payload
+        return final, opcode, payload
 
     def _close_websocket_client(self, socket_connection):
         with self._websocket_lock:
@@ -196,13 +197,15 @@ class LocalServer(QObject):
                 self._close_websocket_client(socket_connection)
                 return
 
+        fragmented_message = None
+
         try:
             while True:
                 decoded = self._decode_websocket_message(socket_connection)
                 if decoded is None:
                     break
 
-                opcode, payload = decoded
+                final, opcode, payload = decoded
                 if opcode == 0x8:
                     break
                 if opcode == 0x9:
@@ -211,11 +214,29 @@ class LocalServer(QObject):
                     except OSError:
                         break
                     continue
-                if opcode != 0x1:
+
+                if opcode == 0x1:
+                    if fragmented_message is not None:
+                        fragmented_message = None
+                        continue
+                    if final:
+                        message_payload = payload
+                    else:
+                        fragmented_message = [payload]
+                        continue
+                elif opcode == 0x0:
+                    if fragmented_message is None:
+                        continue
+                    fragmented_message.append(payload)
+                    if not final:
+                        continue
+                    message_payload = b"".join(fragmented_message)
+                    fragmented_message = None
+                else:
                     continue
 
                 try:
-                    message = json.loads(payload.decode("utf-8"))
+                    message = json.loads(message_payload.decode("utf-8"))
                 except (UnicodeDecodeError, json.JSONDecodeError):
                     continue
 
