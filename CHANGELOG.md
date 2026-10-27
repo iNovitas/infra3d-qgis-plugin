@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.2] - 27.10.2026
+
+### Bugfixes
+
+- Fix network not loading error when using chrome / chromium based browsers
+
 ## [1.0.1] - 31.07.2026
 
 ### Bugfixes
